@@ -1,4 +1,4 @@
-import { ExternalLink, X } from 'lucide-react';
+import { Download, ExternalLink, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { timeAgo } from '@/lib/format';
+import { formatBytes, timeAgo } from '@/lib/format';
+import { fileUrl, KIND_ICON } from '@/lib/items';
 import { folderPath, folderStatus } from '@/lib/tree';
 import type { Item } from '@/lib/types';
 import { createTag, updateItem, useStore } from '@/store/store';
@@ -87,6 +88,34 @@ function TagPicker({ value, onChange }: { value: string[]; onChange: (ids: strin
   );
 }
 
+function FileRow({ item }: { item: Item }) {
+  const file = item.file!;
+  const Icon = KIND_ICON[item.kind];
+  return (
+    <div className="bg-muted/50 flex items-center gap-3 rounded-lg border p-3">
+      <Icon className="text-muted-foreground size-5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{file.name}</p>
+        <p className="text-muted-foreground text-xs">{formatBytes(file.size)}</p>
+      </div>
+      {file.id && (
+        <>
+          <Button type="button" variant="outline" size="icon" asChild>
+            <a href={fileUrl(file)} target="_blank" rel="noopener" aria-label="Open file">
+              <ExternalLink />
+            </a>
+          </Button>
+          <Button type="button" variant="outline" size="icon" asChild>
+            <a href={fileUrl(file, true)} download={file.name} aria-label="Download file">
+              <Download />
+            </a>
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ItemForm({ item }: { item: Item }) {
   const folders = useStore((state) => state.folders);
   const folderOptions = useMemo(
@@ -131,7 +160,8 @@ function ItemForm({ item }: { item: Item }) {
         <Label htmlFor="item-title">Title</Label>
         <Input id="item-title" value={draft.title} onChange={(event) => set({ title: event.target.value })} />
       </div>
-      {item.kind !== 'note' && (
+      {item.file && <FileRow item={item} />}
+      {item.kind !== 'note' && !item.file && (
         <div className="grid gap-1.5">
           <Label htmlFor="item-url">Link</Label>
           <div className="flex gap-2">
@@ -144,7 +174,7 @@ function ItemForm({ item }: { item: Item }) {
           </div>
         </div>
       )}
-      {item.kind !== 'note' && (
+      {item.kind !== 'note' && !item.file && (
         <div className="grid gap-1.5">
           <Label htmlFor="item-description">Description</Label>
           <Textarea
@@ -215,7 +245,7 @@ export function ItemDialog() {
     <Dialog open={!!item} onOpenChange={(open) => !open && editItem(null)}>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{item?.kind === 'note' ? 'Edit note' : 'Edit link'}</DialogTitle>
+          <DialogTitle>{item?.kind === 'note' ? 'Edit note' : item?.file ? 'Edit file' : 'Edit link'}</DialogTitle>
           <DialogDescription className="sr-only">Change the title, notes, folder and tags.</DialogDescription>
         </DialogHeader>
         {item && <ItemForm key={item.id} item={item} />}

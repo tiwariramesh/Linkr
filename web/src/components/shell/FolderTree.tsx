@@ -86,8 +86,9 @@ function FolderNode({ folder, depth, counts }: { folder: Folder; depth: number; 
             }}
             {...draggable.attributes}
             {...draggable.listeners}
+            data-drop-folder={folder.id}
             className={cn(
-              'group/row relative flex h-8 items-center rounded-md pr-1 text-sm outline-none',
+              'group/row data-[file-over]:bg-primary/10 data-[file-over]:ring-primary relative flex h-8 items-center rounded-md pr-1 text-sm outline-none data-[file-over]:ring-2',
               activeId === folder.id
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
                 : 'hover:bg-sidebar-accent/60',

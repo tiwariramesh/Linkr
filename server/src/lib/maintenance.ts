@@ -3,7 +3,7 @@ import { db } from '../db/client.ts';
 import { folders, items } from '../db/schema.ts';
 import { mutate } from '../events.ts';
 import { purgeFolders } from '../routes/folders.ts';
-import { clearItemImages } from './images.ts';
+import { clearItemStorage } from './files.ts';
 
 const TRASH_DAYS = 30;
 
@@ -30,6 +30,6 @@ export function purgeOldTrash() {
       tx.delete(items).where(inArray(items.id, ids)).run();
       ids.forEach((id) => touch({ entity: 'item', id, op: 'delete' }));
     });
-    clearItemImages(ids);
+    clearItemStorage(ids);
   }
 }

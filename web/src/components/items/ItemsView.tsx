@@ -4,8 +4,8 @@ import { Check } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import type { DragData } from '@/components/dnd/dnd';
 import { Favicon, ItemMenu, ItemThumb, TagChips } from '@/components/items/ItemParts';
-import { openItem } from '@/lib/items';
-import { hostOf, timeAgo } from '@/lib/format';
+import { itemSubtitle, openItem } from '@/lib/items';
+import { timeAgo } from '@/lib/format';
 import type { Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toggleSelected, useStore } from '@/store/store';
@@ -62,7 +62,7 @@ function SortableItem({
   };
 
   const style = { transform: CSS.Translate.toString(transform), transition };
-  const host = item.siteName || hostOf(item.url);
+  const subtitle = itemSubtitle(item);
 
   if (layout === 'list') {
     return (
@@ -83,7 +83,7 @@ function SortableItem({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{item.title}</p>
           <p className="text-muted-foreground truncate text-xs">
-            {item.kind === 'note' ? item.notes.split('\n').slice(1).join(' ') || 'Note' : host}
+            {item.kind === 'note' ? item.notes.split('\n').slice(1).join(' ') || 'Note' : subtitle}
           </p>
         </div>
         <div className="hidden sm:block">
@@ -119,7 +119,7 @@ function SortableItem({
         <TagChips item={item} />
         <div className="text-muted-foreground mt-auto flex items-center gap-1.5 pt-1 text-xs">
           <Favicon item={item} className="size-3.5" />
-          <span className="truncate">{item.kind === 'note' ? 'Note' : host}</span>
+          <span className="truncate">{subtitle}</span>
           <span className="shrink-0">· {timeAgo(item.createdAt)}</span>
         </div>
       </div>

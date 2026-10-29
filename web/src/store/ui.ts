@@ -9,6 +9,7 @@ type Ui = {
   mobileNavOpen: boolean;
   // A just-created folder whose title should be focused for typing.
   focusTitleFolderId: string | null;
+  paletteOpen: boolean;
 };
 
 export const useUi = create<Ui>(() => ({
@@ -18,6 +19,7 @@ export const useUi = create<Ui>(() => ({
   movingItemIds: null,
   mobileNavOpen: false,
   focusTitleFolderId: null,
+  paletteOpen: false,
 }));
 
 export const editItem = (id: string | null) => useUi.setState({ editingItemId: id });
@@ -27,6 +29,7 @@ export const closeSettings = () => useUi.setState({ settingsOpen: false });
 export const askMoveItems = (ids: string[] | null) => useUi.setState({ movingItemIds: ids });
 export const setMobileNav = (open: boolean) => useUi.setState({ mobileNavOpen: open });
 export const focusFolderTitle = (id: string | null) => useUi.setState({ focusTitleFolderId: id });
+export const openPalette = (open: boolean) => useUi.setState({ paletteOpen: open });
 
 // Which folders are expanded in the sidebar, remembered per browser.
 const EXPANDED_KEY = 'linkr-expanded';

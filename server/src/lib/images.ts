@@ -7,6 +7,9 @@ import { readLimited, safeFetch } from './safe-fetch.ts';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
+// Stored in an item's `image` when its preview was made by the browser from an uploaded file.
+export const UPLOAD_THUMBNAIL = 'upload:thumbnail';
+
 const EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',

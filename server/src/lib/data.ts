@@ -1,11 +1,12 @@
 import { and, desc, eq, gt, inArray, max } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { changes, folders, items, itemTags, spaceMembers, spaces, tags } from '../db/schema.ts';
+import { changes, files, folders, items, itemTags, spaceMembers, spaces, tags } from '../db/schema.ts';
 
 type ItemRow = typeof items.$inferSelect;
 type FolderRow = typeof folders.$inferSelect;
 type TagRow = typeof tags.$inferSelect;
 type SpaceRow = typeof spaces.$inferSelect;
+type FileRow = typeof files.$inferSelect;
 
 // ---- Wire format (what the web app receives) ----
 
@@ -38,7 +39,7 @@ export const folderWire = (folder: FolderRow) => ({
   updatedAt: folder.updatedAt,
 });
 
-export const itemWire = (item: ItemRow, tagIds: string[]) => ({
+export const itemWire = (item: ItemRow, tagIds: string[], file: FileRow | undefined) => ({
   id: item.id,
   spaceId: item.spaceId,
   folderId: item.folderId,
@@ -54,6 +55,7 @@ export const itemWire = (item: ItemRow, tagIds: string[]) => ({
   pinned: item.pinned,
   position: item.position,
   fetchStatus: item.fetchStatus,
+  file: file ? { id: file.id, name: file.name, mime: file.mime, size: file.size } : null,
   tagIds,
   createdAt: item.createdAt,
   updatedAt: item.updatedAt,
@@ -83,9 +85,23 @@ function tagIdsFor(itemIds: string[]) {
   return map;
 }
 
+function filesFor(fileIds: string[]) {
+  const map = new Map<string, FileRow>();
+  for (let i = 0; i < fileIds.length; i += 500) {
+    const rows = db
+      .select()
+      .from(files)
+      .where(inArray(files.id, fileIds.slice(i, i + 500)))
+      .all();
+    for (const row of rows) map.set(row.id, row);
+  }
+  return map;
+}
+
 export function itemsWire(rows: ItemRow[]) {
   const tagMap = tagIdsFor(rows.map((row) => row.id));
-  return rows.map((row) => itemWire(row, tagMap.get(row.id) ?? []));
+  const fileMap = filesFor(rows.flatMap((row) => (row.fileId ? [row.fileId] : [])));
+  return rows.map((row) => itemWire(row, tagMap.get(row.id) ?? [], row.fileId ? fileMap.get(row.fileId) : undefined));
 }
 
 export function getItemWire(itemId: string) {

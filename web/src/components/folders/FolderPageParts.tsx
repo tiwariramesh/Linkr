@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
-import { CalendarDays, CornerDownLeft, FolderInput, FolderPlus, Plus, Trash2, X } from 'lucide-react';
+import { CalendarDays, CornerDownLeft, FolderInput, FolderPlus, Paperclip, Plus, Trash2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useDragState, type DropData } from '@/components/dnd/dnd';
@@ -11,8 +11,10 @@ import type { Folder } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { addFromText, createFolder, setSelection, trashItems, useStore } from '@/store/store';
 import { askMoveItems, focusFolderTitle } from '@/store/ui';
+import { pickFiles, uploadFiles } from '@/store/uploads';
 
 // One box for everything: paste links (one or many) or type a note, then press Enter.
+// Files can be pasted, dropped or picked with the paperclip.
 export function QuickAdd({ folderId }: { folderId: string | null }) {
   const [text, setText] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -38,6 +40,13 @@ export function QuickAdd({ folderId }: { folderId: string | null }) {
           event.target.style.height = 'auto';
           event.target.style.height = `${Math.min(event.target.scrollHeight, 200)}px`;
         }}
+        onPaste={(event) => {
+          const files = [...event.clipboardData.files];
+          if (files.length) {
+            event.preventDefault();
+            uploadFiles(files, folderId);
+          }
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
             event.preventDefault();
@@ -45,15 +54,28 @@ export function QuickAdd({ folderId }: { folderId: string | null }) {
             event.currentTarget.style.height = 'auto';
           }
         }}
-        placeholder="Paste a link or type a note, then press Enter"
+        placeholder="Paste a link, type a note, or drop files here"
         aria-label="Add a link or note"
+        id="quick-add"
         className="placeholder:text-muted-foreground max-h-48 min-h-7 flex-1 resize-none bg-transparent py-1 text-sm outline-none"
       />
-      {text.trim() && (
+      {text.trim() ? (
         <span className="text-muted-foreground mt-1 hidden shrink-0 items-center gap-1 text-xs sm:flex">
           {urls ? (urls.length > 1 ? `Add ${urls.length} links` : 'Add link') : 'Add note'}
           <CornerDownLeft className="size-3" />
         </span>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground -mr-1"
+          onClick={() => pickFiles(folderId)}
+          aria-label="Upload files"
+          title="Upload files"
+        >
+          <Paperclip />
+        </Button>
       )}
     </div>
   );
@@ -67,8 +89,9 @@ function FolderTile({ folder, count }: { folder: Folder; count: number }) {
     <Link
       ref={setNodeRef}
       to={`/s/${folder.spaceId}/f/${folder.id}`}
+      data-drop-folder={folder.id}
       className={cn(
-        'bg-card hover:bg-muted/50 flex items-center gap-3 rounded-xl border p-3 transition',
+        'bg-card hover:bg-muted/50 data-[file-over]:ring-primary data-[file-over]:bg-primary/5 flex items-center gap-3 rounded-xl border p-3 transition data-[file-over]:ring-2',
         isOver && dragging && 'ring-primary bg-primary/5 ring-2'
       )}
     >

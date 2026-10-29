@@ -15,22 +15,27 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { generateKeyBetween } from 'fractional-indexing';
-import { FileText, Folder as FolderIcon, Link2, Menu } from 'lucide-react';
-import { lazy, Suspense, useEffect } from 'react';
+import { Folder as FolderIcon, Menu, Search } from 'lucide-react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Outlet, useNavigate, useParams } from 'react-router';
 import { useDragState, type DragData, type DropData, type FolderZone } from '@/components/dnd/dnd';
+import { Capture } from '@/components/shell/Capture';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { KIND_ICON } from '@/lib/items';
 import { childFolders, isInside, itemsInFolder } from '@/lib/tree';
 import { moveItems, openSpace, updateFolder, updateItem, useStore } from '@/store/store';
-import { setMobileNav, useUi } from '@/store/ui';
+import { openPalette, setMobileNav, useUi } from '@/store/ui';
 
 // Dialogs load on first use, keeping the first page load small.
 const ItemDialog = lazy(() => import('@/components/items/ItemDialog').then((m) => ({ default: m.ItemDialog })));
 const MoveDialog = lazy(() => import('@/components/items/MoveDialog').then((m) => ({ default: m.MoveDialog })));
 const SettingsDialog = lazy(() =>
   import('@/components/settings/SettingsDialog').then((m) => ({ default: m.SettingsDialog }))
+);
+const CommandPalette = lazy(() =>
+  import('@/components/shell/CommandPalette').then((m) => ({ default: m.CommandPalette }))
 );
 
 // Sidebar targets win when the pointer is over them; otherwise items sort by nearest neighbour.
@@ -70,7 +75,7 @@ function DragPreview() {
   });
   const kind = useStore((state) => (dragging?.type === 'item' ? state.items[dragging.itemId]?.kind : null));
   if (!dragging || !label) return null;
-  const Icon = dragging.type === 'folder' ? FolderIcon : kind === 'note' ? FileText : Link2;
+  const Icon = dragging.type === 'folder' ? FolderIcon : KIND_ICON[kind ?? 'link'];
   return (
     <div className="bg-popover text-popover-foreground flex max-w-64 cursor-grabbing items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-lg">
       <Icon className="text-muted-foreground size-4 shrink-0" />
@@ -87,6 +92,21 @@ export function AppShell() {
   const editing = useUi((state) => state.editingItemId !== null);
   const moving = useUi((state) => state.movingItemIds !== null);
   const settingsOpen = useUi((state) => state.settingsOpen);
+  const paletteOpen = useUi((state) => state.paletteOpen);
+  // Mounted on first use, then kept so it opens instantly.
+  const [paletteUsed, setPaletteUsed] = useState(false);
+  if (paletteOpen && !paletteUsed) setPaletteUsed(true);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        openPalette(!useUi.getState().paletteOpen);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     if (!spaceId) return;
@@ -207,7 +227,10 @@ export function AppShell() {
               <Menu />
             </Button>
             <img src="/logo.svg" alt="" className="size-5" />
-            <span className="font-semibold">Linkr</span>
+            <span className="flex-1 font-semibold">Linkr</span>
+            <Button variant="ghost" size="icon" onClick={() => openPalette(true)} aria-label="Search">
+              <Search />
+            </Button>
           </div>
           <Outlet />
         </main>
@@ -219,7 +242,9 @@ export function AppShell() {
         {editing && <ItemDialog />}
         {moving && <MoveDialog />}
         {settingsOpen && <SettingsDialog />}
+        {paletteUsed && <CommandPalette />}
       </Suspense>
+      <Capture />
     </DndContext>
   );
 }

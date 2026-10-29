@@ -15,7 +15,7 @@ let server: ChildProcess;
 before(async () => {
   server = spawn(process.execPath, ['src/index.ts'], {
     cwd: path.resolve(import.meta.dirname, '..'),
-    env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, REGISTRATION: 'open' },
+    env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, REGISTRATION: 'open', MAX_UPLOAD_MB: '1' },
     stdio: 'ignore',
   });
   // Generous: first start on Windows can be slow while antivirus scans freshly loaded files.
@@ -38,19 +38,33 @@ after(async () => {
   fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
-// A signed-in client that keeps its session cookie.
+// A signed-in client that keeps its session cookie. Each one appears to come from its own address,
+// so the sign-in rate limit (per address) doesn't trip as the suite grows.
+let clients = 0;
 async function signUp(name: string) {
   let cookie = '';
+  const address = `203.0.113.${++clients}`;
   const call = async (method: string, url: string, body?: unknown) => {
     const response = await fetch(BASE + url, {
       method,
-      headers: { 'content-type': 'application/json', cookie },
+      headers: { 'content-type': 'application/json', cookie, 'x-forwarded-for': address },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const setCookies = response.headers.getSetCookie();
     if (setCookies.length) cookie = setCookies.map((c) => c.split(';')[0]).join('; ');
     const text = await response.text();
     return { status: response.status, body: text ? JSON.parse(text) : null };
+  };
+  // Raw bodies (uploads) and raw responses (downloads).
+  const send = async (method: string, url: string, body?: Buffer, type?: string, headers?: Record<string, string>) => {
+    const response = await fetch(BASE + url, {
+      method,
+      headers: { cookie, ...(type ? { 'content-type': type } : {}), ...headers },
+      body: body ? new Uint8Array(body) : undefined,
+    });
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const json = response.headers.get('content-type')?.includes('json') ? JSON.parse(bytes.toString()) : null;
+    return { status: response.status, headers: response.headers, bytes, body: json };
   };
   const registered = await call('POST', '/api/auth/register', {
     username: name,
@@ -59,7 +73,7 @@ async function signUp(name: string) {
   });
   assert.equal(registered.status, 201, JSON.stringify(registered.body));
   const me = await call('GET', '/api/me');
-  return { call, user: me.body.user, spaceId: me.body.spaces[0].id as string, spaces: me.body.spaces };
+  return { call, send, user: me.body.user, spaceId: me.body.spaces[0].id as string, spaces: me.body.spaces };
 }
 
 describe('Linkr API', () => {
@@ -200,6 +214,67 @@ describe('Linkr API', () => {
     );
     assert.deepEqual(paths.sort(), ['A @ ROOT/Bar', 'B @ ROOT/Bar/Deep']);
     assert.equal(snap.tags[0].title, 'docs');
+  });
+
+  test('uploads stream to disk, serve byte ranges, take thumbnails and leave with their item', async () => {
+    const { call, send, spaceId } = await signUp('uploader');
+    const outsider = await signUp('outsider');
+    const folder = (await call('POST', '/api/folders', { spaceId, title: 'Handouts' })).body;
+    const upload = (name: string, bytes: Buffer, type: string, folderId?: string) =>
+      send(
+        'POST',
+        `/api/items/upload?spaceId=${spaceId}&name=${encodeURIComponent(name)}${folderId ? `&folderId=${folderId}` : ''}`,
+        bytes,
+        type
+      );
+
+    const pdf = Buffer.concat([Buffer.from('%PDF-1.4' + String.fromCharCode(10)), Buffer.alloc(4000, 65)]);
+    const slides = await upload('Week 3 slides.pdf', pdf, 'application/pdf', folder.id);
+    assert.equal(slides.status, 201, JSON.stringify(slides.body));
+    const item = slides.body;
+    assert.deepEqual(
+      [item.kind, item.title, item.folderId, item.file.name, item.file.mime, item.file.size],
+      ['pdf', 'Week 3 slides', folder.id, 'Week 3 slides.pdf', 'application/pdf', pdf.length]
+    );
+    const fileUrl = `/api/files/${item.file.id}`;
+    const whole = await send('GET', fileUrl);
+    assert.equal(whole.status, 200);
+    assert.ok(whole.bytes.equals(pdf));
+    assert.match(whole.headers.get('content-disposition')!, /^inline;/);
+    const part = await send('GET', fileUrl, undefined, undefined, { range: 'bytes=0-3' });
+    assert.equal(part.status, 206);
+    assert.equal(part.bytes.toString(), '%PDF');
+    assert.equal(part.headers.get('content-range'), `bytes 0-3/${pdf.length}`);
+    assert.equal((await outsider.send('GET', fileUrl)).status, 404);
+
+    // Anything a browser could run is only ever offered as a sandboxed download.
+    const page = (await upload('page.html', Buffer.from('<script>alert(1)</script>'), 'text/html')).body;
+    assert.equal(page.kind, 'file');
+    const served = await send('GET', `/api/files/${page.file.id}`);
+    assert.equal(served.headers.get('content-type'), 'application/octet-stream');
+    assert.match(served.headers.get('content-disposition')!, /^attachment;/);
+    assert.match(served.headers.get('content-security-policy')!, /sandbox/);
+    // No type from the browser: guessed from the extension.
+    assert.equal((await upload('clip.mp4', Buffer.from('video'), '')).body.kind, 'video');
+
+    const thumbnail = Buffer.from('not really a png');
+    assert.equal((await send('PUT', `/api/items/${item.id}/thumbnail`, thumbnail, 'text/html')).status, 415);
+    assert.equal((await send('PUT', `/api/items/${item.id}/thumbnail`, thumbnail, 'image/png')).status, 204);
+    const preview = await send('GET', `/api/items/${item.id}/image`);
+    assert.equal(preview.headers.get('content-type'), 'image/png');
+    assert.ok(preview.bytes.equals(thumbnail));
+
+    assert.equal((await upload('big.bin', Buffer.alloc(1024 * 1024 + 1), 'application/octet-stream')).status, 413);
+    assert.equal((await upload('empty.txt', Buffer.alloc(0), 'text/plain')).status, 422);
+    assert.equal((await call('PATCH', `/api/items/${item.id}`, { url: 'https://example.com' })).status, 422);
+    assert.equal((await outsider.send('POST', `/api/items/upload?spaceId=${spaceId}&name=x.txt`, pdf)).status, 404);
+
+    const stored = path.join(dataDir, 'files', item.id);
+    assert.ok(fs.existsSync(stored));
+    await call('POST', '/api/items/trash', { ids: [item.id] });
+    await call('POST', '/api/items/purge', { ids: [item.id] });
+    assert.ok(!fs.existsSync(stored), 'purging removes the file from disk');
+    assert.equal((await send('GET', fileUrl)).status, 404);
   });
 
   test('deleting an account removes its Personal space and everything in it', async () => {

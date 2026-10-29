@@ -1,5 +1,6 @@
 import {
   Copy,
+  Download,
   ExternalLink,
   FolderInput,
   Loader2,
@@ -20,11 +21,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { COLORS } from '@/lib/colors';
-import { KIND_ICON, openItem } from '@/lib/items';
+import { fileExtension, fileUrl, KIND_ICON, openItem } from '@/lib/items';
 import type { Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { refetchItem, trashItems, useStore } from '@/store/store';
 import { askMoveItems, editItem } from '@/store/ui';
+import { useUploads } from '@/store/uploads';
 
 export function Favicon({ item, className }: { item: Item; className?: string }) {
   const [failed, setFailed] = useState(false);
@@ -45,6 +47,8 @@ export function Favicon({ item, className }: { item: Item; className?: string })
 // Preview area of a card: the page's image, a note's text, or a tinted placeholder.
 export function ItemThumb({ item, className }: { item: Item; className?: string }) {
   const [failed, setFailed] = useState(false);
+  const preview = useUploads((state) => state.previews[item.id]);
+  const progress = useUploads((state) => state.progress[item.id]);
   const Icon = KIND_ICON[item.kind];
 
   if (item.kind === 'note') {
@@ -60,7 +64,15 @@ export function ItemThumb({ item, className }: { item: Item; className?: string 
     );
   }
 
-  const showImage = item.image && !failed;
+  // Uploaded images the browser couldn't shrink (e.g. SVG) show the original.
+  const remote = item.image
+    ? `/api/items/${item.id}/image?v=${encodeURIComponent(item.updatedAt)}`
+    : item.kind === 'image' && item.file?.id
+      ? fileUrl(item.file)
+      : null;
+  const src = preview ?? (failed ? null : remote);
+  const showImage = !!src;
+  const extension = item.file && item.kind === 'file' ? fileExtension(item.file.name) : '';
   return (
     <div
       className={cn(
@@ -70,17 +82,25 @@ export function ItemThumb({ item, className }: { item: Item; className?: string 
       )}
     >
       {showImage ? (
-        <img
-          src={`/api/items/${item.id}/image?v=${encodeURIComponent(item.updatedAt)}`}
-          alt=""
-          loading="lazy"
-          onError={() => setFailed(true)}
-          className="size-full object-cover"
-        />
+        <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="size-full object-cover" />
       ) : item.fetchStatus === 'pending' ? (
         <Loader2 className="text-muted-foreground size-5 animate-spin" />
       ) : (
-        <Icon className="text-muted-foreground/60 size-8" />
+        <span className="text-muted-foreground/60 flex flex-col items-center gap-1">
+          <Icon className="size-8" />
+          {extension && <span className="text-xs font-semibold tracking-wide">{extension}</span>}
+        </span>
+      )}
+      {progress !== undefined && (
+        <span className="absolute inset-x-3 bottom-3 h-1.5 overflow-hidden rounded-full bg-black/15 dark:bg-white/15">
+          <span
+            role="progressbar"
+            aria-label="Uploading"
+            aria-valuenow={Math.round(progress * 100)}
+            className="bg-primary block h-full rounded-full transition-[width]"
+            style={{ width: `${Math.max(4, progress * 100)}%` }}
+          />
+        </span>
       )}
       {item.kind === 'video' && showImage && (
         <span className="absolute inset-0 flex items-center justify-center">
@@ -137,6 +157,18 @@ export function ItemMenu({ item, className }: { item: Item; className?: string }
           <DropdownMenuItem onSelect={() => openItem(item)}>
             <ExternalLink /> Open link
           </DropdownMenuItem>
+        )}
+        {item.file?.id && (
+          <>
+            <DropdownMenuItem onSelect={() => openItem(item)}>
+              <ExternalLink /> Open
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={fileUrl(item.file, true)} download={item.file.name}>
+                <Download /> Download
+              </a>
+            </DropdownMenuItem>
+          </>
         )}
         <DropdownMenuItem onSelect={() => editItem(item.id)}>
           <Pencil /> Edit

@@ -45,6 +45,9 @@ export const config = {
   dataDir,
   dbPath: path.join(dataDir, 'linkr.db'),
   imageDir: path.join(dataDir, 'img'),
+  fileDir: path.join(dataDir, 'files'),
+  // Cloudflare's free plan rejects request bodies over 100 MB, so that is the default.
+  maxUploadBytes: Math.max(1, Number(process.env.MAX_UPLOAD_MB) || 100) * 1024 * 1024,
   frontendDist: path.join(repoRoot, 'web', 'dist'),
   migrationsDir: path.resolve(import.meta.dirname, '../drizzle'),
   authSecret: loadAuthSecret(),

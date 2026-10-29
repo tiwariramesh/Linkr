@@ -2,6 +2,7 @@ import { Inbox } from 'lucide-react';
 import { useMemo } from 'react';
 import { FolderGlyph } from '@/components/folders/FolderGlyph';
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -43,21 +44,23 @@ export function MoveDialog() {
       title="Move to folder"
       description="Choose where to move the selected items"
     >
-      <CommandInput placeholder={`Move ${ids?.length === 1 ? 'item' : `${ids?.length ?? 0} items`} to…`} />
-      <CommandList>
-        <CommandEmpty>No folder found.</CommandEmpty>
-        <CommandGroup>
-          <CommandItem value="inbox" onSelect={() => move(null)}>
-            <Inbox /> Inbox
-          </CommandItem>
-          {options.map(({ folder, path }) => (
-            <CommandItem key={folder.id} value={`${path} ${folder.id}`} onSelect={() => move(folder.id)}>
-              <FolderGlyph folder={folder} />
-              <span className="truncate">{path}</span>
+      <Command>
+        <CommandInput placeholder={`Move ${ids?.length === 1 ? 'item' : `${ids?.length ?? 0} items`} to…`} />
+        <CommandList>
+          <CommandEmpty>No folder found.</CommandEmpty>
+          <CommandGroup>
+            <CommandItem value="inbox" onSelect={() => move(null)}>
+              <Inbox /> Inbox
             </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
+            {options.map(({ folder, path }) => (
+              <CommandItem key={folder.id} value={`${path} ${folder.id}`} onSelect={() => move(folder.id)}>
+                <FolderGlyph folder={folder} />
+                <span className="truncate">{path}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
     </CommandDialog>
   );
 }

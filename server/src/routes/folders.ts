@@ -8,7 +8,7 @@ import { HttpError, parseInput, type AppEnv } from '../http.ts';
 import { assertFolderInSpace, loadFolder, requireRole } from '../lib/access.ts';
 import { folderWire } from '../lib/data.ts';
 import { idSchema, newId } from '../lib/ids.ts';
-import { clearItemImages } from '../lib/images.ts';
+import { clearItemStorage } from '../lib/files.ts';
 import { folderPositionAtEnd, isValidPosition } from '../lib/positions.ts';
 import { colorSchema } from './spaces.ts';
 
@@ -155,5 +155,5 @@ export function purgeFolders(spaceId: string, actorId: string | null, folderIds:
     for (const id of allFolderIds) touch({ entity: 'folder', id, op: 'delete' });
     for (const id of itemIds) touch({ entity: 'item', id, op: 'delete' });
   });
-  clearItemImages(itemIds);
+  clearItemStorage(itemIds);
 }

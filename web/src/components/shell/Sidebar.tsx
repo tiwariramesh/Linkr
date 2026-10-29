@@ -9,6 +9,7 @@ import {
   Monitor,
   Moon,
   Plus,
+  Search,
   Settings,
   Sun,
   Trash2,
@@ -36,7 +37,7 @@ import { setTheme, useTheme, type Theme } from '@/lib/theme';
 import { folderStatus, itemCounts } from '@/lib/tree';
 import { cn } from '@/lib/utils';
 import { createFolder, createSpace, logout, useStore } from '@/store/store';
-import { focusFolderTitle, openSettings, setMobileNav } from '@/store/ui';
+import { focusFolderTitle, openPalette, openSettings, setMobileNav } from '@/store/ui';
 
 function NavItem({
   to,
@@ -46,6 +47,7 @@ function NavItem({
   end,
   dropRef,
   highlight,
+  dropFolder,
 }: {
   to: string;
   icon: ReactNode;
@@ -54,16 +56,19 @@ function NavItem({
   end?: boolean;
   dropRef?: (node: HTMLElement | null) => void;
   highlight?: boolean;
+  // Files and links dragged in from outside the app land in this folder ('' = Inbox).
+  dropFolder?: string;
 }) {
   return (
     <NavLink
       ref={dropRef}
       to={to}
       end={end}
+      data-drop-folder={dropFolder}
       onClick={() => setMobileNav(false)}
       className={({ isActive }) =>
         cn(
-          'flex h-8 items-center gap-2 rounded-md px-2 text-sm',
+          'data-[file-over]:bg-primary/10 data-[file-over]:ring-primary flex h-8 items-center gap-2 rounded-md px-2 text-sm data-[file-over]:ring-2',
           isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/60',
           highlight && 'bg-primary/10 ring-primary/40 ring-1'
         )
@@ -243,8 +248,22 @@ export function Sidebar() {
   const base = `/s/${spaceId}`;
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="p-2">
+      <div className="flex flex-col gap-1 p-2">
         <SpaceSwitcher />
+        <button
+          type="button"
+          onClick={() => {
+            setMobileNav(false);
+            openPalette(true);
+          }}
+          className="text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 flex h-8 items-center gap-2 rounded-md px-2 text-sm"
+        >
+          <Search className="size-4" />
+          <span className="flex-1 text-left">Search</span>
+          <kbd className="bg-background rounded border px-1.5 font-sans text-[10px] font-medium">
+            {/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K'}
+          </kbd>
+        </button>
       </div>
       <ScrollArea className="min-h-0 flex-1">
         <nav className="flex flex-col gap-0.5 px-2 pb-4">
@@ -256,6 +275,7 @@ export function Sidebar() {
             count={counts.get('')}
             dropRef={inboxDrop.setNodeRef}
             highlight={inboxDrop.isOver && dragging?.type === 'item'}
+            dropFolder=""
           />
 
           {favourites.length > 0 && (
@@ -267,6 +287,7 @@ export function Sidebar() {
                   to={`${base}/f/${folder.id}`}
                   icon={<FolderGlyph folder={folder} />}
                   label={folder.title}
+                  dropFolder={folder.id}
                 />
               ))}
             </>

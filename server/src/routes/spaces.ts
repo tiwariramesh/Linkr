@@ -9,7 +9,7 @@ import { HttpError, parseInput, type AppEnv } from '../http.ts';
 import { requireRole } from '../lib/access.ts';
 import { changesSince, spaceSnapshot, spaceWire, userSpaces } from '../lib/data.ts';
 import { idSchema, newId } from '../lib/ids.ts';
-import { clearItemImages } from '../lib/images.ts';
+import { clearItemStorage } from '../lib/files.ts';
 
 const COLORS = ['gray', 'red', 'orange', 'amber', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink'] as const;
 export const colorSchema = z.enum(COLORS);
@@ -73,7 +73,7 @@ export const spaceRoutes = new Hono<AppEnv>()
       .all()
       .map((row) => row.id);
     db.delete(spaces).where(eq(spaces.id, spaceId)).run();
-    clearItemImages(itemIds);
+    clearItemStorage(itemIds);
     return c.body(null, 204);
   })
   .get('/spaces/:id/snapshot', (c) => {

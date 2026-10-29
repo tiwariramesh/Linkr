@@ -146,6 +146,8 @@ export const items = sqliteTable(
     image: text('image').notNull().default(''),
     favicon: text('favicon').notNull().default(''),
     siteName: text('site_name').notNull().default(''),
+    // The uploaded file this item stands for (files, images, videos and PDFs added from a device).
+    fileId: text('file_id'),
     color: text('color'),
     pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
     position: text('position').notNull(),
@@ -163,6 +165,26 @@ export const items = sqliteTable(
     index('items_folder_idx').on(t.folderId),
     index('items_space_url_idx').on(t.spaceId, t.url),
   ]
+);
+
+// Uploaded files. The bytes live on disk at data/files/<itemId>/<fileId>.
+export const files = sqliteTable(
+  'files',
+  {
+    id: text('id').primaryKey(),
+    spaceId: text('space_id')
+      .notNull()
+      .references(() => spaces.id, { onDelete: 'cascade' }),
+    itemId: text('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    mime: text('mime').notNull(),
+    size: integer('size').notNull(),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [index('files_item_idx').on(t.itemId)]
 );
 
 export const tags = sqliteTable(

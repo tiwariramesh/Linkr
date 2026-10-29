@@ -48,7 +48,7 @@ const without = <T>(map: Record<string, T>, ids: string[]) => {
 // flicker back to the old value; once the save finishes we catch up again.
 const inFlight = new Map<string, number>();
 
-async function save<T>(ids: string[], request: () => Promise<T>, rollback?: () => void): Promise<T | undefined> {
+export async function save<T>(ids: string[], request: () => Promise<T>, rollback?: () => void): Promise<T | undefined> {
   ids.forEach((id) => inFlight.set(id, (inFlight.get(id) ?? 0) + 1));
   try {
     return await request();
@@ -323,14 +323,13 @@ export async function purgeFolder(id: string) {
 // ---- Items ----
 
 // "Paste a link or type a note": each URL becomes a link; anything else becomes one note.
-export async function addFromText(text: string, folderId: string | null) {
+// Returns the new items' IDs.
+export async function addFromText(text: string, folderId: string | null): Promise<string[]> {
   const urls = extractUrls(text);
-  if (urls) {
-    for (const url of [...urls].reverse()) await createItem({ kind: 'link', url, folderId });
-    return urls.length;
-  }
-  await createItem({ kind: 'note', notes: text.trim(), folderId });
-  return 1;
+  const created = urls
+    ? await Promise.all([...urls].reverse().map((url) => createItem({ kind: 'link', url, folderId })))
+    : [await createItem({ kind: 'note', notes: text.trim(), folderId })];
+  return created.flatMap((item) => (item ? [item.id] : []));
 }
 
 export async function createItem(input: {
@@ -360,6 +359,7 @@ export async function createItem(input: {
     pinned: false,
     position: generateKeyBetween(null, first?.position ?? null),
     fetchStatus: input.kind === 'link' ? 'pending' : 'done',
+    file: null,
     tagIds: [],
     createdAt: now,
     updatedAt: now,

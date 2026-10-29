@@ -7,7 +7,7 @@ import { db } from '../db/client.ts';
 import { items, spaceMembers, spaces, user } from '../db/schema.ts';
 import { HttpError, parseInput, rateLimiter, type AppEnv } from '../http.ts';
 import { userSpaces } from '../lib/data.ts';
-import { clearItemImages } from '../lib/images.ts';
+import { clearItemStorage } from '../lib/files.ts';
 
 const limitAuthAttempts = rateLimiter(10, 60_000);
 
@@ -137,7 +137,7 @@ export const accountRoutes = new Hono<AppEnv>()
         .all()
         .map((row) => row.id);
       db.delete(spaces).where(inArray(spaces.id, orphaned)).run();
-      clearItemImages(itemIds);
+      clearItemStorage(itemIds);
     }
     forwardCookies(c, result.headers);
     return c.body(null, 204);

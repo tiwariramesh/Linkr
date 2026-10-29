@@ -8,7 +8,15 @@ import { HttpError, parseInput, type AppEnv } from '../http.ts';
 import { assertFolderInSpace, assertTagsInSpace, loadItem, requireRole } from '../lib/access.ts';
 import { getItemWire } from '../lib/data.ts';
 import { idSchema, newId } from '../lib/ids.ts';
-import { clearItemImages, fetchRemoteImage, readCachedImage, writeCachedImage, type ImageFile } from '../lib/images.ts';
+import { clearItemStorage } from '../lib/files.ts';
+import {
+  clearItemImages,
+  fetchRemoteImage,
+  readCachedImage,
+  UPLOAD_THUMBNAIL,
+  writeCachedImage,
+  type ImageFile,
+} from '../lib/images.ts';
 import { enqueueFetch, placeholderTitle } from '../lib/link-queue.ts';
 import { isVideoUrl } from '../lib/metadata.ts';
 import { isValidPosition, itemPositionsAtTop } from '../lib/positions.ts';
@@ -123,6 +131,7 @@ export const itemRoutes = new Hono<AppEnv>()
     if (input.folderId !== undefined) assertFolderInSpace(input.folderId, item.spaceId);
     if (input.tagIds) assertTagsInSpace(input.tagIds, item.spaceId);
     if (input.position !== undefined && !isValidPosition(input.position)) throw new HttpError(422, 'Invalid position');
+    if (item.fileId && input.url) throw new HttpError(422, 'Uploaded files can’t be given a link');
 
     const { tagIds, ...fields } = input;
     const urlChanged = fields.url !== undefined && fields.url !== item.url;
@@ -197,7 +206,7 @@ export const itemRoutes = new Hono<AppEnv>()
       deleted.forEach((id) => touch({ entity: 'item', id, op: 'delete' }));
       return deleted;
     });
-    clearItemImages(purged);
+    clearItemStorage(purged);
     return c.body(null, 204);
   })
   .post('/items/:id/refetch', (c) => {
@@ -225,6 +234,7 @@ export const itemRoutes = new Hono<AppEnv>()
     if (!item.image) return respond(null, 0);
     const cached = readCachedImage(item.id, item.image);
     if (cached) return respond(cached, 7 * 24 * 60 * 60);
+    if (item.image === UPLOAD_THUMBNAIL) return respond(null, 0);
     try {
       const image = await fetchRemoteImage(item.image);
       writeCachedImage(item.id, item.image, image);

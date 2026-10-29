@@ -37,5 +37,6 @@ export const appInfoRoutes = new Hono<AppEnv>().get('/app-info', async (c) => {
     latestVersion: latest,
     updateAvailable: latest ? isNewer(latest, config.version) : null,
     registrationOpen: isRegistrationOpen(),
+    maxUploadMb: config.maxUploadBytes / 1024 / 1024,
   });
 });

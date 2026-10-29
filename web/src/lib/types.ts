@@ -36,6 +36,9 @@ export type Folder = {
 
 export type ItemKind = 'link' | 'note' | 'file' | 'image' | 'video' | 'pdf';
 
+// An uploaded file behind a file, image, video or PDF item.
+export type FileInfo = { id: string; name: string; mime: string; size: number };
+
 export type Item = {
   id: string;
   spaceId: string;
@@ -52,6 +55,7 @@ export type Item = {
   pinned: boolean;
   position: string;
   fetchStatus: 'pending' | 'done' | 'failed';
+  file: FileInfo | null;
   tagIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -76,4 +80,5 @@ export type AppInfo = {
   latestVersion: string | null;
   updateAvailable: boolean | null;
   registrationOpen: boolean;
+  maxUploadMb: number;
 };

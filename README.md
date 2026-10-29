@@ -14,6 +14,8 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 - **Spaces and folders.** Each account starts with a Personal space; add more for courses, teams or clients. Inside, folders nest as deep as you like, with colours, emoji icons and favourites.
 - **Sessions.** Give any folder a date and a term (a class, workshop, meeting or recurring topic). Finished terms go to the **Archive**, intact and one click away.
 - **Fast capture.** One box: paste a link (or several) or type a note and press Enter. The card appears at once; its title, image and type (page, video, PDF, image) fill in a moment later.
+- **Capture anywhere.** Drop files, photos, videos or PDFs anywhere in the app, or onto a folder in the sidebar, to upload them there. Links and text dragged in from other windows are saved too, and Ctrl+V with no text box focused saves whatever is on the clipboard. On a phone, use the paperclip.
+- **Command palette.** Press Ctrl+K (⌘K on a Mac) to search every item and folder, jump anywhere, save a link or note, or upload files without touching the mouse.
 - **Drag and drop.** Drag cards onto any folder in the sidebar, reorder them by hand, and drag folders to nest or reorder them. Select several with Ctrl/Cmd-click and move them together.
 - **Live sync.** Open Linkr on your laptop, phone and tablet: a change on one appears on the others in well under a second.
 - **Accounts.** Anyone can register on your server (or only you, with `REGISTRATION=closed`). Spaces are private to their members.
@@ -23,7 +25,7 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 ### Roadmap
 
 1. ~~Spaces, folders, sessions, drag and drop, live sync~~ (done)
-2. Capture anywhere: drop files and images, paste anywhere, command palette (Ctrl+K)
+2. ~~Capture anywhere: drop files and images, paste anywhere, command palette (Ctrl+K)~~ (done)
 3. Split view: preview pages, videos and PDFs beside rich session notes
 4. Highlights and annotations on saved articles
 5. Across terms: "run again" templates, where a link was used before, presenter mode, full-text search
@@ -63,6 +65,8 @@ Linkr listens only on this computer by default (`HOST=127.0.0.1`). The simplest 
    ```
 4. In `.env`, set `BASE_URL=https://linkr.example.com` and restart Linkr.
 
+Cloudflare's free plan accepts uploads of up to 100 MB, which is Linkr's default limit (`MAX_UPLOAD_MB`).
+
 The computer running Linkr must stay on and awake for other devices to reach it.
 
 ## Update
@@ -77,7 +81,7 @@ Then restart Linkr. Database changes are applied automatically on start.
 
 ## Back up
 
-Everything lives in the `data` folder: the database (`linkr.db`), cached preview images and the generated sign-in secret. Stop Linkr and copy that folder.
+Everything lives in the `data` folder: the database (`linkr.db`), uploaded files, cached preview images and the generated sign-in secret. Stop Linkr and copy that folder.
 
 ## Develop
 
