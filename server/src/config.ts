@@ -45,7 +45,7 @@ export const config = {
   dataDir,
   dbPath: path.join(dataDir, 'linkr.db'),
   imageDir: path.join(dataDir, 'img'),
-  frontendDist: path.join(repoRoot, 'frontend', 'dist'),
+  frontendDist: path.join(repoRoot, 'web', 'dist'),
   migrationsDir: path.resolve(import.meta.dirname, '../drizzle'),
   authSecret: loadAuthSecret(),
   // 'open' lets anyone register; 'closed' allows only the very first account (the owner).

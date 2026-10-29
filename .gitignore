@@ -1,5 +1,5 @@
 node_modules/
-frontend/dist/
+web/dist/
 
 # Your database, uploaded images and auth secret live here. Back it up; never commit it.
 data/

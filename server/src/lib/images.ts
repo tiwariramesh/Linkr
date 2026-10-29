@@ -20,12 +20,12 @@ const EXTENSIONS: Record<string, string> = {
 };
 const MIME_BY_EXTENSION = Object.fromEntries(Object.entries(EXTENSIONS).map(([mime, ext]) => [ext, mime]));
 
-const itemDir = (itemId: number) => path.join(config.imageDir, String(itemId));
+const itemDir = (itemId: string) => path.join(config.imageDir, String(itemId));
 const cacheBaseName = (imageUrl: string) => crypto.createHash('sha1').update(imageUrl).digest('hex');
 
 export type ImageFile = { contents: Buffer; mime: string };
 
-export function readCachedImage(itemId: number, imageUrl: string): ImageFile | null {
+export function readCachedImage(itemId: string, imageUrl: string): ImageFile | null {
   const dir = itemDir(itemId);
   if (!fs.existsSync(dir)) return null;
   const base = cacheBaseName(imageUrl);
@@ -35,7 +35,7 @@ export function readCachedImage(itemId: number, imageUrl: string): ImageFile | n
   return { contents: fs.readFileSync(path.join(dir, file)), mime };
 }
 
-export function writeCachedImage(itemId: number, imageUrl: string, image: ImageFile) {
+export function writeCachedImage(itemId: string, imageUrl: string, image: ImageFile) {
   const dir = itemDir(itemId);
   // One cached image per item: drop the previous one when the URL changes.
   fs.rmSync(dir, { recursive: true, force: true });
@@ -43,7 +43,7 @@ export function writeCachedImage(itemId: number, imageUrl: string, image: ImageF
   fs.writeFileSync(path.join(dir, `${cacheBaseName(imageUrl)}.${EXTENSIONS[image.mime] ?? 'bin'}`), image.contents);
 }
 
-export function clearItemImages(itemIds: number[]) {
+export function clearItemImages(itemIds: string[]) {
   for (const id of itemIds) fs.rmSync(itemDir(id), { recursive: true, force: true });
 }
 

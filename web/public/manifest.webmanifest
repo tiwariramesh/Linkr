@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "Linkr",
+  "short_name": "Linkr",
+  "description": "Organise your ideas: links, notes and sessions in spaces and folders, synced across your devices.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#FF9500",
+  "categories": ["productivity", "education"],
+  "icons": [
+    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

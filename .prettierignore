@@ -1,0 +1,4 @@
+web/src/components/ui/
+web/dist/
+server/drizzle/
+package-lock.json

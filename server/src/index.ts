@@ -10,13 +10,20 @@ import { auth } from './auth.ts';
 import { config } from './config.ts';
 import { migrateDatabase } from './db/client.ts';
 import { errorResponse, HttpError, type AppEnv } from './http.ts';
+import { resumePendingFetches } from './lib/link-queue.ts';
+import { purgeOldTrash } from './lib/maintenance.ts';
 import { accountRoutes, publicAccountRoutes } from './routes/account.ts';
+import { appInfoRoutes } from './routes/app-info.ts';
+import { folderRoutes } from './routes/folders.ts';
 import { importRoutes } from './routes/imports.ts';
 import { itemRoutes } from './routes/items.ts';
-import { contentRoutes, miscRoutes, publicMiscRoutes } from './routes/misc.ts';
+import { spaceRoutes } from './routes/spaces.ts';
 import { tagRoutes } from './routes/tags.ts';
 
 migrateDatabase();
+purgeOldTrash();
+setInterval(purgeOldTrash, 24 * 60 * 60 * 1000).unref();
+resumePendingFetches();
 
 const app = new Hono<AppEnv>();
 app.onError(errorResponse);
@@ -46,20 +53,18 @@ const requireUser = createMiddleware<AppEnv>(async (c, next) => {
 
 const api = new Hono<AppEnv>();
 api.route('/', publicAccountRoutes);
-api.route('/', publicMiscRoutes);
+api.route('/', appInfoRoutes);
 api.use('*', requireUser);
 api.route('/', accountRoutes);
+api.route('/', spaceRoutes);
+api.route('/', folderRoutes);
 api.route('/', itemRoutes);
 api.route('/', tagRoutes);
 api.route('/', importRoutes);
-api.route('/', miscRoutes);
 api.all('*', () => {
   throw new HttpError(404, 'Not found');
 });
 app.route('/api', api);
-
-app.use('/content/*', requireUser);
-app.route('/', contentRoutes);
 
 // ---- The built PWA ----
 

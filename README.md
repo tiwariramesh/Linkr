@@ -5,25 +5,30 @@
 <h1 align="center">Linkr</h1>
 
 <p align="center"><b>Organise your ideas.</b><br>
-Save links and notes, sort them with nested tags, and keep everything in sync on every device. Self-hosted, open source.</p>
+A self-hosted home for links, notes and session material: spaces, nested folders and live sync across every device.</p>
 
 ---
 
 ## What it does
 
-- **Accounts.** Anyone can register on your server (or only you, with `REGISTRATION=closed`). Each person's links, notes and tags are private to their account.
-- **Live sync.** Sign in on your laptop, phone and tablet: a change on one shows up on the others within a second, without reloading.
-- **Links with previews.** Paste a URL and Linkr fetches the title, description and preview image. Duplicates are flagged.
-- **Nested tags.** `Work/Research/AI` creates the whole path. Tags have colours and can be pinned, and items from child tags roll up into their parents.
-- **Fast UI.** Card, list and table layouts, instant search, sorting and bulk actions. Works on phones and installs as an app (PWA).
-- **Import.** Bring bookmarks from Chrome, Edge, Firefox, Safari or Raindrop.io (HTML export), or a Pocket export (.zip). Folders become nested tags and original dates are kept.
+- **Spaces and folders.** Each account starts with a Personal space; add more for courses, teams or clients. Inside, folders nest as deep as you like, with colours, emoji icons and favourites.
+- **Sessions.** Give any folder a date and a term (a class, workshop, meeting or recurring topic). Finished terms go to the **Archive**, intact and one click away.
+- **Fast capture.** One box: paste a link (or several) or type a note and press Enter. The card appears at once; its title, image and type (page, video, PDF, image) fill in a moment later.
+- **Drag and drop.** Drag cards onto any folder in the sidebar, reorder them by hand, and drag folders to nest or reorder them. Select several with Ctrl/Cmd-click and move them together.
+- **Live sync.** Open Linkr on your laptop, phone and tablet: a change on one appears on the others in well under a second.
+- **Accounts.** Anyone can register on your server (or only you, with `REGISTRATION=closed`). Spaces are private to their members.
+- **Trash.** Deleted items and folders can be restored for 30 days.
+- **Import.** Bookmarks from Chrome, Edge, Firefox, Safari or Raindrop.io (HTML export), or a Pocket export (.zip). Browser folders become Linkr folders and original dates are kept.
 
-### Coming next
+### Roadmap
 
-- Notes with embedded YouTube videos, images and saved articles
-- Sharing links and notes with other accounts, with notifications
-- Chrome extension
-- AI features (summaries, auto-tagging) with your choice of provider: Claude, OpenAI, OpenRouter, or a local model through Ollama
+1. ~~Spaces, folders, sessions, drag and drop, live sync~~ (done)
+2. Capture anywhere: drop files and images, paste anywhere, command palette (Ctrl+K)
+3. Split view: preview pages, videos and PDFs beside rich session notes
+4. Highlights and annotations on saved articles
+5. Across terms: "run again" templates, where a link was used before, presenter mode, full-text search
+6. Shared spaces with roles, notifications, and read-only pages to share a session with students
+7. Chrome extension (save to the current session, tab groups ↔ sessions), then AI with your choice of Claude, OpenAI, OpenRouter or Ollama
 
 ## Run it
 
@@ -80,16 +85,17 @@ Everything lives in the `data` folder: the database (`linkr.db`), cached preview
 npm run dev
 ```
 
-This starts the API server on port 8080 (restarting on changes) and the Vite dev server on http://localhost:5173.
+This starts the API server on port 8080 (restarting on changes) and the web app on http://localhost:5173.
 
-| Folder | What's in it |
-|---|---|
-| `frontend/` | React 19 + TypeScript + Vite, Tailwind CSS 4, shadcn/ui components, MobX |
-| `server/` | Hono API on Node 24, run straight from TypeScript. SQLite via Drizzle ORM, accounts via Better Auth |
-| `server/drizzle/` | Database migrations. After editing `server/src/db/schema.ts`, run `npm run db:generate` |
+| Folder            | What's in it                                                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `web/`            | The app: React 19, TypeScript, Vite 8, Tailwind CSS 4, shadcn/ui, Zustand, dnd-kit                                      |
+| `server/`         | Hono API on Node 24, run straight from TypeScript. SQLite via Drizzle ORM, accounts via Better Auth                     |
+| `server/drizzle/` | Database migrations, applied automatically on start. After editing `server/src/db/schema.ts`, run `npm run db:generate` |
+| `server/test/`    | API tests against a real server and a throwaway database                                                                |
 
-Before sending a change: `npm run typecheck` and `npm run check -w frontend`.
+Before sending a change: `npm run typecheck`, `npm run lint` and `npm test`.
 
 ## Credits
 
-Linkr is built on [Faved](https://github.com/denho/faved) by Denis Dvali. The interface comes from Faved; the server was rewritten in TypeScript to add accounts and sync. Both are released under the [MIT licence](LICENSE).
+Linkr began as a fork of [Faved](https://github.com/denho/faved) by Denis Dvali, and its bookmark importers follow Faved's approach. Both are released under the [MIT licence](LICENSE).

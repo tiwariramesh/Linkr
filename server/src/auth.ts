@@ -4,6 +4,7 @@ import { username } from 'better-auth/plugins';
 import { config } from './config.ts';
 import { db } from './db/client.ts';
 import * as schema from './db/schema.ts';
+import { createSpace } from './routes/spaces.ts';
 
 export const auth = betterAuth({
   appName: 'Linkr',
@@ -27,6 +28,16 @@ export const auth = betterAuth({
   },
   user: {
     deleteUser: { enabled: true },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // Every account starts with its own Personal space.
+        after: async (user) => {
+          createSpace(user.id, 'Personal', 'personal');
+        },
+      },
+    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
