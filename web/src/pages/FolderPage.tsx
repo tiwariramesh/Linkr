@@ -1,4 +1,4 @@
-import { ArchiveRestore, Inbox, LayoutGrid, List, Undo2, X } from 'lucide-react';
+import { ArchiveRestore, Eye, Inbox, LayoutGrid, List, Undo2, X } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -20,10 +20,12 @@ import { readInboxView, saveInboxView } from '@/lib/inbox-view';
 import { childFolders, folderStatus, itemCounts, itemsInFolder } from '@/lib/tree';
 import type { FolderView, Item, SortMode, Tag } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { restoreFolder, setSelection, updateFolder, useStore } from '@/store/store';
+import { restoreFolder, setSelection, updateFolder, useCanEdit, useStore } from '@/store/store';
 import { showSessionNotes, useUi } from '@/store/ui';
 
 // The editor is large; it loads the first time notes are opened.
+const DraftNotes = lazy(() => import('@/components/editor/Notes').then((m) => ({ default: m.DraftNotes })));
+const PANEL_TABS = { notes: 'Session notes', draft: 'My draft', highlights: 'Highlights' };
 const SessionNotes = lazy(() => import('@/components/editor/Notes').then((m) => ({ default: m.SessionNotes })));
 
 const SORT_LABELS: Record<SortMode, string> = {
@@ -61,7 +63,8 @@ function FolderContents() {
   const allItems = useStore((state) => state.items);
   const tags = useStore((state) => state.tags);
   const notesOpen = useUi((state) => state.sessionNotesOpen);
-  const [panelTab, setPanelTab] = useState<'notes' | 'highlights'>('notes');
+  const canEdit = useCanEdit();
+  const [panelTab, setPanelTab] = useState<'notes' | 'draft' | 'highlights'>('notes');
   const [inboxView, setInboxView] = useState(readInboxView);
   const [query, setQuery] = useState('');
 
@@ -117,7 +120,8 @@ function FolderContents() {
     return <div className="text-muted-foreground p-10 text-center">This folder doesn’t exist any more.</div>;
   }
 
-  const readOnly = status === 'trashed';
+  // Trashed folders, and anything for viewers of a shared space, can be looked at but not changed.
+  const readOnly = status === 'trashed' || !canEdit;
   const showNotes = !!folder && notesOpen && !readOnly;
   return (
     <div className="flex min-h-0 flex-1">
@@ -158,8 +162,14 @@ function FolderContents() {
             </div>
           )}
 
-          {folder && !readOnly && (subfolders.length > 0 || items.length === 0) && (
-            <SubfolderTiles parent={folder} folders={subfolders} counts={counts} />
+          {!canEdit && (
+            <div className="bg-muted text-muted-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm">
+              <Eye className="size-4" /> You can view this space. Ask its owner if you need to make changes.
+            </div>
+          )}
+
+          {folder && status !== 'trashed' && (subfolders.length > 0 || (canEdit && items.length === 0)) && (
+            <SubfolderTiles parent={folder} folders={subfolders} counts={counts} canAdd={canEdit} />
           )}
 
           {!readOnly && <QuickAdd folderId={folderId} />}
@@ -220,7 +230,7 @@ function FolderContents() {
         <aside className="bg-background fixed inset-0 z-40 flex flex-col lg:static lg:z-auto lg:w-[420px] lg:shrink-0 lg:border-l">
           <div className="flex items-center justify-between border-b pr-1 pl-2">
             <div className="flex gap-1 pt-2" role="tablist">
-              {(['notes', 'highlights'] as const).map((tab) => (
+              {(['notes', 'draft', 'highlights'] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -234,7 +244,7 @@ function FolderContents() {
                       : 'text-muted-foreground hover:text-foreground border-transparent'
                   )}
                 >
-                  {tab === 'notes' ? 'Session notes' : 'Highlights'}
+                  {PANEL_TABS[tab]}
                 </button>
               ))}
             </div>
@@ -246,6 +256,10 @@ function FolderContents() {
             {panelTab === 'notes' ? (
               <Suspense>
                 <SessionNotes folder={folder} />
+              </Suspense>
+            ) : panelTab === 'draft' ? (
+              <Suspense>
+                <DraftNotes folder={folder} />
               </Suspense>
             ) : (
               <FolderHighlights folder={folder} />

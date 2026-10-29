@@ -224,13 +224,36 @@ function startSync() {
   events = new EventSource('/api/events');
   events.addEventListener('ready', () => {
     // Reconnected after sleep or a network change: we may have missed updates.
-    if (connectedBefore) void catchUp();
+    if (connectedBefore) {
+      void catchUp();
+      void refreshSpaces();
+    }
     connectedBefore = true;
+    window.dispatchEvent(new Event('linkr:notifications'));
   });
+  // About the account rather than a space: other modules listen for these browser events.
+  events.addEventListener('notifications', () => window.dispatchEvent(new Event('linkr:notifications')));
+  events.addEventListener('draft', (event) => {
+    const { folderId } = JSON.parse((event as MessageEvent).data) as { folderId: string };
+    window.dispatchEvent(new CustomEvent('linkr:draft', { detail: folderId }));
+  });
+  // Joined, left, or role changed somewhere.
+  events.addEventListener('spaces', () => void refreshSpaces());
   events.addEventListener('change', (event) => {
     const { spaceId, seq } = JSON.parse((event as MessageEvent).data) as { spaceId: string; seq: number };
     if (spaceId === get().spaceId && seq > get().seq) void catchUp();
   });
+}
+
+// The spaces this account belongs to, and its role in each. If the open space is gone (removed or
+// left), the app moves to another.
+export async function refreshSpaces() {
+  try {
+    const me = await api.get<{ user: User; spaces: Space[] }>('/me');
+    set({ spaces: me.spaces });
+  } catch {
+    // offline: keep what we have
+  }
 }
 
 function stopSync() {
@@ -278,6 +301,8 @@ export async function createFolder(input: { parentId: string | null; title: stri
     archivedAt: null,
     deletedAt: null,
     copiedFrom: null,
+    shareToken: null,
+    shareNotes: false,
     createdAt: now,
     updatedAt: now,
     position: generateKeyBetween(siblings.at(-1)?.position ?? null, null),
@@ -302,6 +327,18 @@ export async function createFolder(input: { parentId: string | null; title: stri
   );
   return folder;
 }
+
+// Turns a folder's public read-only page on or off, and whether it shows the session notes.
+export async function shareFolder(id: string, options: { enabled: boolean; notes?: boolean }) {
+  const folder = await save([id], () => api.patch<Folder>(`/folders/${id}/share`, options));
+  if (folder) set((state) => ({ folders: { ...state.folders, [id]: folder } }));
+  return folder;
+}
+
+// Whether the signed-in account can change things in the open space (viewers can't).
+const canEditIn = (state: State) => state.spaces.find((space) => space.id === state.spaceId)?.role !== 'viewer';
+export const useCanEdit = () => useStore(canEditIn);
+export const canEditNow = () => canEditIn(get());
 
 type FolderPatch = Partial<
   Pick<

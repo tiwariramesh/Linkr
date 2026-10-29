@@ -206,10 +206,12 @@ export function SubfolderTiles({
   parent,
   folders,
   counts,
+  canAdd = true,
 }: {
   parent: Folder;
   folders: Folder[];
   counts: Map<string, number>;
+  canAdd?: boolean;
 }) {
   const navigate = useNavigate();
   const add = async () => {
@@ -224,13 +226,15 @@ export function SubfolderTiles({
       {folders.map((folder) => (
         <FolderTile key={folder.id} folder={folder} count={counts.get(folder.id) ?? 0} />
       ))}
-      <button
-        type="button"
-        onClick={add}
-        className="text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 rounded-xl border border-dashed p-3 text-sm transition"
-      >
-        <FolderPlus className="size-4" /> New subfolder
-      </button>
+      {canAdd && (
+        <button
+          type="button"
+          onClick={add}
+          className="text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center gap-2 rounded-xl border border-dashed p-3 text-sm transition"
+        >
+          <FolderPlus className="size-4" /> New subfolder
+        </button>
+      )}
     </div>
   );
 }

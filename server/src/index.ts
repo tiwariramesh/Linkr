@@ -19,6 +19,8 @@ import { folderRoutes } from './routes/folders.ts';
 import { highlightRoutes } from './routes/highlights.ts';
 import { importRoutes } from './routes/imports.ts';
 import { itemRoutes } from './routes/items.ts';
+import { publicRoutes } from './routes/public.ts';
+import { sharingRoutes } from './routes/sharing.ts';
 import { spaceRoutes } from './routes/spaces.ts';
 import { tagRoutes } from './routes/tags.ts';
 
@@ -56,6 +58,7 @@ const requireUser = createMiddleware<AppEnv>(async (c, next) => {
 const api = new Hono<AppEnv>();
 api.route('/', publicAccountRoutes);
 api.route('/', appInfoRoutes);
+api.route('/', publicRoutes);
 api.use('*', requireUser);
 api.route('/', accountRoutes);
 api.route('/', spaceRoutes);
@@ -64,6 +67,7 @@ api.route('/', itemRoutes);
 api.route('/', fileRoutes);
 api.route('/', tagRoutes);
 api.route('/', highlightRoutes);
+api.route('/', sharingRoutes);
 api.route('/', importRoutes);
 api.all('*', () => {
   throw new HttpError(404, 'Not found');

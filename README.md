@@ -25,6 +25,8 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 - **Drag and drop.** Drag cards onto any folder in the sidebar, reorder them by hand, and drag folders to nest or reorder them. Select several with Ctrl/Cmd-click and move them together.
 - **Live sync.** Open Linkr on your laptop, phone and tablet: a change on one appears on the others in well under a second.
 - **Accounts.** Anyone can register on your server (or only you, with `REGISTRATION=closed`). Spaces are private to their members.
+- **Shared spaces.** Make a shared space and invite other accounts by username or email, as editors or viewers. Invitations, people joining, and links or notes someone sends you arrive under the bell, live. Viewers see everything but can't change anything. Your Personal space stays yours alone, and each folder has a **My draft** tab only you can see.
+- **Public pages.** Share a folder with a read-only link anyone can open without an account, e.g. for students after a session. Your notes about links stay private; session notes appear only if you choose. Turning the link off stops it working.
 - **Trash.** Deleted items and folders can be restored for 30 days.
 - **Import.** Bookmarks from Chrome, Edge, Firefox, Safari or Raindrop.io (HTML export), or a Pocket export (.zip). Browser folders become Linkr folders and original dates are kept.
 
@@ -35,7 +37,7 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 3. ~~Split view: preview pages, videos and PDFs beside rich session notes~~ (done)
 4. ~~Highlights and annotations on saved articles~~ (done)
 5. ~~Across terms: "run again" templates, where a link was used before, presenter mode, full-text search~~ (done)
-6. Shared spaces with roles, notifications, and read-only pages to share a session with students
+6. ~~Shared spaces with roles, notifications, and read-only pages to share a session with students; Notion-style notes, folder covers and descriptions~~ (done)
 7. Chrome extension (save to the current session, tab groups ↔ sessions), then AI with your choice of Claude, OpenAI, OpenRouter or Ollama
 
 ## Run it

@@ -36,7 +36,7 @@ import { startPresenting } from '@/lib/present';
 import { folderPath } from '@/lib/tree';
 import type { Folder } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { setFolderCover, updateFolder, useStore } from '@/store/store';
+import { setFolderCover, updateFolder, useCanEdit, useStore } from '@/store/store';
 import { focusFolderTitle, showSessionNotes, useUi } from '@/store/ui';
 
 const menuParts = {
@@ -68,7 +68,20 @@ function Breadcrumbs({ folder }: { folder: Folder }) {
 }
 
 // Click the folder's icon to change its emoji or colour.
-function AppearancePicker({ folder, raised }: { folder: Folder; raised?: boolean }) {
+function AppearancePicker({ folder, raised, disabled }: { folder: Folder; raised?: boolean; disabled?: boolean }) {
+  if (disabled) {
+    return (
+      <span
+        className={cn(
+          'flex size-14 shrink-0 items-center justify-center rounded-xl',
+          folder.color && COLORS[folder.color].soft,
+          raised && 'bg-background ring-background shadow-sm ring-4'
+        )}
+      >
+        <FolderGlyph folder={folder} className="size-8 text-4xl" />
+      </span>
+    );
+  }
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -139,12 +152,23 @@ function AppearancePicker({ folder, raised }: { folder: Folder; raised?: boolean
 }
 
 // Optional date and term turn a folder into a session (a class, workshop, meeting...).
-function SessionDetails({ folder }: { folder: Folder }) {
+function SessionDetails({ folder, disabled }: { folder: Folder; disabled?: boolean }) {
   const [date, setDate] = useState(folder.sessionDate ?? '');
   const [term, setTerm] = useState(folder.term ?? '');
   const isSession = folder.sessionDate || folder.term;
 
   const save = () => updateFolder(folder.id, { sessionDate: date || null, term: term.trim() || null });
+
+  if (disabled) {
+    if (!isSession) return null;
+    return (
+      <p className="flex flex-wrap items-center gap-1.5 px-1.5 py-0.5 text-sm">
+        <CalendarDays className="text-muted-foreground size-4" />
+        {folder.sessionDate && <span>{formatSessionDate(folder.sessionDate)}</span>}
+        {folder.term && <span className="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">{folder.term}</span>}
+      </p>
+    );
+  }
 
   return (
     <Popover
@@ -213,7 +237,7 @@ function SessionDetails({ folder }: { folder: Folder }) {
 }
 
 // A textarea rather than an input so long titles wrap on narrow screens; titles stay one line.
-function TitleInput({ folder }: { folder: Folder }) {
+function TitleInput({ folder, readOnly }: { folder: Folder; readOnly?: boolean }) {
   const [value, setValue] = useState(folder.title);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const focusId = useUi((state) => state.focusTitleFolderId);
@@ -266,6 +290,7 @@ function TitleInput({ folder }: { folder: Folder }) {
         }
       }}
       aria-label="Folder title"
+      readOnly={readOnly}
       className="placeholder:text-muted-foreground block w-full min-w-0 resize-none overflow-hidden rounded-md bg-transparent text-3xl leading-tight font-bold tracking-tight sm:text-4xl outline-none focus:ring-0"
       placeholder="Untitled folder"
     />
@@ -396,7 +421,15 @@ function CoverPicker({ folder, children }: { folder: Folder; children: ReactNode
 }
 
 // A line or two about the folder, edited in place. Saved when you leave the box.
-function DescriptionInput({ folder, autoFocus }: { folder: Folder; autoFocus?: boolean }) {
+function DescriptionInput({
+  folder,
+  autoFocus,
+  readOnly,
+}: {
+  folder: Folder;
+  autoFocus?: boolean;
+  readOnly?: boolean;
+}) {
   const [value, setValue] = useState(folder.description);
   const ref = useRef<HTMLTextAreaElement>(null);
   const fit = () => {
@@ -425,6 +458,7 @@ function DescriptionInput({ folder, autoFocus }: { folder: Folder; autoFocus?: b
         }
       }}
       aria-label="Folder description"
+      readOnly={readOnly}
       placeholder="Add a description…"
       className="text-muted-foreground placeholder:text-muted-foreground/60 block w-full resize-none overflow-hidden bg-transparent text-sm leading-relaxed outline-none sm:text-base"
     />
@@ -433,6 +467,7 @@ function DescriptionInput({ folder, autoFocus }: { folder: Folder; autoFocus?: b
 
 // Breadcrumbs and actions on top; then the cover banner, the icon, title, description and session details.
 export function FolderHeader({ folder }: { folder: Folder }) {
+  const canEdit = useCanEdit();
   const [addingDescription, setAddingDescription] = useState(false);
   const cover = coverBackground(folder);
   const showDescription = !!folder.description || addingDescription;
@@ -469,24 +504,31 @@ export function FolderHeader({ folder }: { folder: Folder }) {
           className="group/cover relative mt-2 h-32 overflow-hidden rounded-xl sm:h-44"
           style={{ background: cover }}
         >
-          <CoverPicker folder={folder}>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="absolute right-3 bottom-3 opacity-0 shadow-sm transition group-hover/cover:opacity-100 focus-visible:opacity-100"
-            >
-              <ImageIcon /> Change cover
-            </Button>
-          </CoverPicker>
+          {canEdit && (
+            <CoverPicker folder={folder}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute right-3 bottom-3 opacity-0 shadow-sm transition group-hover/cover:opacity-100 focus-visible:opacity-100"
+              >
+                <ImageIcon /> Change cover
+              </Button>
+            </CoverPicker>
+          )}
         </div>
       )}
 
       <div className={cn('flex flex-col gap-1', cover ? '-mt-7 px-2' : 'mt-2')}>
         {/* Above the cover it overlaps; only its own buttons take clicks, so "Change cover" stays reachable. */}
         <div className="pointer-events-none relative z-10 flex items-end gap-2 *:pointer-events-auto">
-          <AppearancePicker folder={folder} raised={!!cover} />
+          <AppearancePicker folder={folder} raised={!!cover} disabled={!canEdit} />
           {/* Shown on hover, like Notion: add what the folder doesn't have yet. */}
-          <div className="mb-1 flex gap-1 opacity-0 transition group-hover/header:opacity-100 focus-within:opacity-100">
+          <div
+            className={cn(
+              'mb-1 flex gap-1 opacity-0 transition group-hover/header:opacity-100 focus-within:opacity-100',
+              !canEdit && 'hidden'
+            )}
+          >
             {!cover && (
               <CoverPicker folder={folder}>
                 <Button variant="ghost" size="xs" className="text-muted-foreground">
@@ -507,16 +549,17 @@ export function FolderHeader({ folder }: { folder: Folder }) {
           </div>
         </div>
         {/* Remounts when the saved title changes (e.g. renamed on another device). */}
-        <TitleInput key={folder.title} folder={folder} />
+        <TitleInput key={folder.title} folder={folder} readOnly={!canEdit} />
         {showDescription && (
           <DescriptionInput
             key={folder.description}
             folder={folder}
             autoFocus={addingDescription && !folder.description}
+            readOnly={!canEdit}
           />
         )}
         <div className="flex flex-col">
-          <SessionDetails folder={folder} />
+          <SessionDetails folder={folder} disabled={!canEdit} />
           <FolderHistory folder={folder} />
         </div>
       </div>

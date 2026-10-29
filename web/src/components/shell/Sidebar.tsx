@@ -14,6 +14,7 @@ import {
   Sun,
   Trash2,
   UserRound,
+  Users,
 } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router';
@@ -36,8 +37,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { setTheme, useTheme, type Theme } from '@/lib/theme';
 import { folderStatus, itemCounts } from '@/lib/tree';
 import { cn } from '@/lib/utils';
-import { createFolder, createSpace, logout, useStore } from '@/store/store';
-import { focusFolderTitle, openPalette, openSettings, setMobileNav } from '@/store/ui';
+import { createFolder, createSpace, logout, useCanEdit, useStore } from '@/store/store';
+import { NotificationsBell } from '@/components/sharing/NotificationsBell';
+import { focusFolderTitle, openPalette, openSettings, openSpaceSettings, setMobileNav } from '@/store/ui';
 
 function NavItem({
   to,
@@ -109,7 +111,11 @@ function SpaceSwitcher() {
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{current?.name ?? 'Linkr'}</span>
               <span className="text-muted-foreground block text-xs">
-                {current?.kind === 'team' ? 'Shared space' : 'Personal space'}
+                {current?.kind === 'team'
+                  ? current.role === 'viewer'
+                    ? 'Shared space · view only'
+                    : 'Shared space'
+                  : 'Personal space'}
               </span>
             </span>
             <ChevronsUpDown className="text-muted-foreground size-4 shrink-0" />
@@ -127,18 +133,22 @@ function SpaceSwitcher() {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => openSpaceSettings(true)}>
+            <Users /> {current?.kind === 'team' ? 'People and settings' : 'Share with others…'}
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setCreating(true)}>
-            <Plus /> New space
+            <Plus /> New shared space
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>New space</DialogTitle>
+            <DialogTitle>New shared space</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground text-sm">
-            A separate place with its own folders and tags, e.g. one per course, team or client.
+            A separate place with its own folders and tags, e.g. for a course, team or department. Invite people to it
+            once it’s made.
           </p>
           <form
             onSubmit={(event) => {
@@ -212,6 +222,7 @@ function UserMenu() {
 
 export function Sidebar() {
   const { spaceId } = useParams();
+  const canEdit = useCanEdit();
   const navigate = useNavigate();
   const items = useStore((state) => state.items);
   const counts = useMemo(() => itemCounts(items), [items]);
@@ -250,20 +261,23 @@ export function Sidebar() {
     <div className="flex h-full w-full flex-col">
       <div className="flex flex-col gap-1 p-2">
         <SpaceSwitcher />
-        <button
-          type="button"
-          onClick={() => {
-            setMobileNav(false);
-            openPalette(true);
-          }}
-          className="text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 flex h-8 items-center gap-2 rounded-md px-2 text-sm"
-        >
-          <Search className="size-4" />
-          <span className="flex-1 text-left">Search</span>
-          <kbd className="bg-background rounded border px-1.5 font-sans text-[10px] font-medium">
-            {/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K'}
-          </kbd>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileNav(false);
+              openPalette(true);
+            }}
+            className="text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 flex h-8 flex-1 items-center gap-2 rounded-md px-2 text-sm"
+          >
+            <Search className="size-4" />
+            <span className="flex-1 text-left">Search</span>
+            <kbd className="bg-background rounded border px-1.5 font-sans text-[10px] font-medium">
+              {/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K'}
+            </kbd>
+          </button>
+          <NotificationsBell />
+        </div>
       </div>
       <ScrollArea className="min-h-0 flex-1">
         <nav className="flex flex-col gap-0.5 px-2 pb-4">
@@ -295,9 +309,11 @@ export function Sidebar() {
 
           <div className="group/folders mt-4 mb-1 flex items-center justify-between px-2">
             <p className="text-muted-foreground text-xs font-medium">Folders</p>
-            <Button variant="ghost" size="icon-xs" onClick={newFolder} aria-label="New folder" title="New folder">
-              <Plus />
-            </Button>
+            {canEdit && (
+              <Button variant="ghost" size="icon-xs" onClick={newFolder} aria-label="New folder" title="New folder">
+                <Plus />
+              </Button>
+            )}
           </div>
           <FolderTree counts={counts} />
           <div
@@ -308,13 +324,13 @@ export function Sidebar() {
               overRoot && dragging?.type === 'folder' && 'border-primary/50 bg-primary/5'
             )}
           >
-            {dragging?.type === 'folder' ? (
-              'Drop here to move to the top level'
-            ) : (
-              <button type="button" onClick={newFolder} className="hover:text-foreground flex items-center gap-1.5">
-                <Plus className="size-3.5" /> New folder
-              </button>
-            )}
+            {dragging?.type === 'folder'
+              ? 'Drop here to move to the top level'
+              : canEdit && (
+                  <button type="button" onClick={newFolder} className="hover:text-foreground flex items-center gap-1.5">
+                    <Plus className="size-3.5" /> New folder
+                  </button>
+                )}
           </div>
 
           <div className="mt-4 flex flex-col gap-0.5">

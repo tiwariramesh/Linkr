@@ -9,6 +9,7 @@ import {
   Pencil,
   Play,
   RefreshCw,
+  Send,
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -25,8 +26,8 @@ import { COLORS } from '@/lib/colors';
 import { fileExtension, fileUrl, KIND_ICON, notePreview, openInNewTab, openItem } from '@/lib/items';
 import type { Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { refetchItem, trashItems, useStore } from '@/store/store';
-import { askMoveItems, editItem } from '@/store/ui';
+import { refetchItem, trashItems, useCanEdit, useStore } from '@/store/store';
+import { askMoveItems, askSendItem, editItem } from '@/store/ui';
 import { useUploads } from '@/store/uploads';
 
 export function Favicon({ item, className }: { item: Item; className?: string }) {
@@ -139,6 +140,7 @@ export function TagChips({ item, max = 3 }: { item: Item; max?: number }) {
 export function ItemMenu({ item, className }: { item: Item; className?: string }) {
   const selection = useStore((state) => state.selection);
   const ids = selection.includes(item.id) ? selection : [item.id];
+  const canEdit = useCanEdit();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -173,12 +175,21 @@ export function ItemMenu({ item, className }: { item: Item; className?: string }
             </DropdownMenuItem>
           </>
         )}
-        <DropdownMenuItem onSelect={() => editItem(item.id)}>
-          <Pencil /> Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => askMoveItems(ids)}>
-          <FolderInput /> Move to…
-        </DropdownMenuItem>
+        {canEdit && (
+          <>
+            <DropdownMenuItem onSelect={() => editItem(item.id)}>
+              <Pencil /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => askMoveItems(ids)}>
+              <FolderInput /> Move to…
+            </DropdownMenuItem>
+          </>
+        )}
+        {!item.file && (
+          <DropdownMenuItem onSelect={() => askSendItem(item.id)}>
+            <Send /> Send to someone…
+          </DropdownMenuItem>
+        )}
         {item.url && (
           <>
             <DropdownMenuItem
@@ -189,15 +200,21 @@ export function ItemMenu({ item, className }: { item: Item; className?: string }
             >
               <Copy /> Copy link
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => refetchItem(item.id)}>
-              <RefreshCw /> Refresh preview
+            {canEdit && (
+              <DropdownMenuItem onSelect={() => refetchItem(item.id)}>
+                <RefreshCw /> Refresh preview
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
+        {canEdit && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={() => trashItems(ids)}>
+              <Trash2 /> {ids.length > 1 ? `Move ${ids.length} to Trash` : 'Move to Trash'}
             </DropdownMenuItem>
           </>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={() => trashItems(ids)}>
-          <Trash2 /> {ids.length > 1 ? `Move ${ids.length} to Trash` : 'Move to Trash'}
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

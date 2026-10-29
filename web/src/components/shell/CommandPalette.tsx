@@ -33,7 +33,7 @@ import { itemSubtitle, openItem } from '@/lib/items';
 import { setTheme } from '@/lib/theme';
 import { folderPath, folderStatus } from '@/lib/tree';
 import type { Folder, Item, SearchHit } from '@/lib/types';
-import { addFromText, createFolder, useStore } from '@/store/store';
+import { addFromText, createFolder, useCanEdit, useStore } from '@/store/store';
 import { focusFolderTitle, openPalette, openSettings, showSessionNotes, useUi } from '@/store/ui';
 import { pickFiles } from '@/store/uploads';
 
@@ -160,18 +160,20 @@ export function CommandPalette() {
   };
 
   const urls = query.trim() ? extractUrls(query) : null;
-  const save: Action[] = query.trim()
-    ? [
-        {
-          id: 'save',
-          label: urls
-            ? `Save ${urls.length === 1 ? 'link' : `${urls.length} links`} to ${hereName}`
-            : `Save as a note in ${hereName}`,
-          icon: urls ? <Link2 /> : <StickyNote />,
-          run: () => void addFromText(query, here?.id ?? null),
-        },
-      ]
-    : [];
+  const canEdit = useCanEdit();
+  const save: Action[] =
+    canEdit && query.trim()
+      ? [
+          {
+            id: 'save',
+            label: urls
+              ? `Save ${urls.length === 1 ? 'link' : `${urls.length} links`} to ${hereName}`
+              : `Save as a note in ${hereName}`,
+            icon: urls ? <Link2 /> : <StickyNote />,
+            run: () => void addFromText(query, here?.id ?? null),
+          },
+        ]
+      : [];
 
   const newFolder = async (parentId: string | null) => {
     const folder = await createFolder({ parentId, title: 'Untitled folder' });
@@ -249,11 +251,15 @@ export function CommandPalette() {
       run: () => setTheme('system'),
     },
   ];
+  // Viewers get the actions that only look and move around.
+  const allowed = canEdit
+    ? actions
+    : actions.filter((action) => !['upload', 'new-folder', 'new-subfolder', 'import'].includes(action.id));
   const foundActions = terms.length
-    ? actions.filter((action) =>
+    ? allowed.filter((action) =>
         terms.every((term) => `${action.label} ${action.keywords ?? ''}`.toLowerCase().includes(term))
       )
-    : actions.slice(0, 6);
+    : allowed.slice(0, 6);
 
   const folderLabel = (item: Item) =>
     item.folderId

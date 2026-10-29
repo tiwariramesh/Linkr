@@ -10,6 +10,7 @@ import { loadAppInfo, loadSession, preferredSpaceId, useStore } from '@/store/st
 const ArchivePage = lazy(() => import('@/pages/ArchivePage').then((m) => ({ default: m.ArchivePage })));
 const ItemPage = lazy(() => import('@/pages/ItemPage').then((m) => ({ default: m.ItemPage })));
 const PresentPage = lazy(() => import('@/pages/PresentPage').then((m) => ({ default: m.PresentPage })));
+const PublicPage = lazy(() => import('@/pages/PublicPage').then((m) => ({ default: m.PublicPage })));
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })));
 
 function Splash() {
@@ -93,6 +94,15 @@ const router = createBrowserRouter([
         ],
       },
     ],
+  },
+  // Folders shared with a link: no sign-in.
+  {
+    path: '/p/:token',
+    element: (
+      <Suspense>
+        <PublicPage />
+      </Suspense>
+    ),
   },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

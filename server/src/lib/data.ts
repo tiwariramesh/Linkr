@@ -41,6 +41,8 @@ export const folderWire = (folder: FolderRow) => ({
   archivedAt: folder.archivedAt,
   deletedAt: folder.deletedAt,
   copiedFrom: folder.copiedFrom,
+  shareToken: folder.shareToken,
+  shareNotes: folder.shareNotes,
   createdAt: folder.createdAt,
   updatedAt: folder.updatedAt,
 });

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { toast } from 'sonner';
 import { folderStatus } from '@/lib/tree';
-import { addFromText, trashItems, useStore } from '@/store/store';
+import { addFromText, canEditNow, trashItems, useStore } from '@/store/store';
 import { uploadFiles } from '@/store/uploads';
 
 const isEditable = (target: EventTarget | null) =>
@@ -95,7 +95,8 @@ export function Capture() {
       depth++;
     };
     const onDragOver = (event: DragEvent) => {
-      if (internal || !isOutsideDrag(event)) return;
+      // Viewers of a shared space can't add anything.
+      if (internal || !isOutsideDrag(event) || !canEditNow()) return;
       // The notes editor places dropped files where they land.
       if (inEditor(event.target)) {
         highlight(null);
@@ -116,7 +117,7 @@ export function Capture() {
       if (depth <= 0) reset();
     };
     const onDrop = (event: DragEvent) => {
-      if (internal || !isOutsideDrag(event) || !event.dataTransfer || inEditor(event.target)) return;
+      if (internal || !isOutsideDrag(event) || !event.dataTransfer || inEditor(event.target) || !canEditNow()) return;
       if (isEditable(event.target) && !event.dataTransfer.types.includes('Files')) return reset();
       event.preventDefault();
       const folderId = folderFor(event);
@@ -126,6 +127,7 @@ export function Capture() {
     const onPaste = (event: ClipboardEvent) => {
       // Text boxes and open dialogs handle their own pasting.
       if (!event.clipboardData || isEditable(event.target) || document.querySelector('[role="dialog"]')) return;
+      if (!canEditNow()) return;
       event.preventDefault();
       capture(event.clipboardData, hereRef.current, true);
     };

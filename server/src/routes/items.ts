@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { db, nowIso } from '../db/client.ts';
 import { itemContent, items, itemTags } from '../db/schema.ts';
@@ -62,6 +62,31 @@ function loadItemsForEdit(userId: string, ids: string[]) {
   if (rows.some((row) => row.spaceId !== spaceId)) throw new HttpError(422, 'Items must be in the same space');
   requireRole(userId, spaceId, 'editor');
   return { rows, spaceId, ids: unique };
+}
+
+// Sends an item's preview image from the cache, fetching it once (SSRF-guarded) if needed.
+// Used by members and public pages.
+export async function itemImageResponse(c: Context, item: typeof items.$inferSelect): Promise<Response> {
+  const respond = (image: ImageFile | null, maxAgeSeconds: number) => {
+    c.header('cache-control', maxAgeSeconds > 0 ? `private, max-age=${maxAgeSeconds}` : 'no-store');
+    c.header('x-content-type-options', 'nosniff');
+    // SVGs can carry scripts; never let one run on this origin.
+    c.header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    if (!image) return c.body(null, 404);
+    c.header('content-type', image.mime);
+    return c.body(new Uint8Array(image.contents));
+  };
+  if (!item.image) return respond(null, 0);
+  const cached = readCachedImage(item.id, item.image);
+  if (cached) return respond(cached, 7 * 24 * 60 * 60);
+  if (item.image === UPLOAD_THUMBNAIL) return respond(null, 0);
+  try {
+    const image = await fetchRemoteImage(item.image);
+    writeCachedImage(item.id, item.image, image);
+    return respond(image, 7 * 24 * 60 * 60);
+  } catch {
+    return respond(null, 60 * 60);
+  }
 }
 
 export const itemRoutes = new Hono<AppEnv>()
@@ -234,26 +259,4 @@ export const itemRoutes = new Hono<AppEnv>()
     return c.json({ html: content.html, byline: content.byline, words: content.words, fetchedAt: content.fetchedAt });
   })
   // Preview image, fetched by the server (SSRF-guarded) and cached on disk per item.
-  .get('/items/:id/image', async (c) => {
-    const item = loadItem(c.var.user.id, c.req.param('id'), 'viewer');
-    const respond = (image: ImageFile | null, maxAgeSeconds: number) => {
-      c.header('cache-control', maxAgeSeconds > 0 ? `private, max-age=${maxAgeSeconds}` : 'no-store');
-      c.header('x-content-type-options', 'nosniff');
-      // SVGs can carry scripts; never let one run on this origin.
-      c.header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
-      if (!image) return c.body(null, 404);
-      c.header('content-type', image.mime);
-      return c.body(new Uint8Array(image.contents));
-    };
-    if (!item.image) return respond(null, 0);
-    const cached = readCachedImage(item.id, item.image);
-    if (cached) return respond(cached, 7 * 24 * 60 * 60);
-    if (item.image === UPLOAD_THUMBNAIL) return respond(null, 0);
-    try {
-      const image = await fetchRemoteImage(item.image);
-      writeCachedImage(item.id, item.image, image);
-      return respond(image, 7 * 24 * 60 * 60);
-    } catch {
-      return respond(null, 60 * 60);
-    }
-  });
+  .get('/items/:id/image', (c) => itemImageResponse(c, loadItem(c.var.user.id, c.req.param('id'), 'viewer')));

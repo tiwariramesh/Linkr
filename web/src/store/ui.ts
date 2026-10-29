@@ -18,6 +18,10 @@ type Ui = {
   sessionNotesOpen: boolean;
   // The folder being copied with "Run again" (its dialog is open).
   runAgainFolderId: string | null;
+  // Other dialogs: the open space's members and settings, a folder's public link, sending an item.
+  spaceSettingsOpen: boolean;
+  shareFolderId: string | null;
+  sendItemId: string | null;
   // A highlight to scroll to and flash in the reader view (set from a highlights list).
   focusHighlightId: string | null;
   // Highlights of the open reader copy whose text couldn't be found in it.
@@ -62,6 +66,9 @@ export const useUi = create<Ui>(() => ({
   paletteOpen: false,
   sessionNotesOpen: readSessionNotesOpen(),
   runAgainFolderId: null,
+  spaceSettingsOpen: false,
+  shareFolderId: null,
+  sendItemId: null,
   focusHighlightId: null,
   lostHighlightIds: [],
 }));
@@ -78,6 +85,9 @@ export function showItemNotes(open: boolean) {
   useUi.setState({ itemNotesOpen: open });
   writeFlag(ITEM_NOTES_KEY, open);
 }
+export const openSpaceSettings = (open: boolean) => useUi.setState({ spaceSettingsOpen: open });
+export const askShareFolder = (folderId: string | null) => useUi.setState({ shareFolderId: folderId });
+export const askSendItem = (itemId: string | null) => useUi.setState({ sendItemId: itemId });
 export const askRunAgain = (folderId: string | null) => useUi.setState({ runAgainFolderId: folderId });
 export const focusHighlight = (id: string | null) => useUi.setState({ focusHighlightId: id });
 export const openPalette = (open: boolean) => useUi.setState({ paletteOpen: open });

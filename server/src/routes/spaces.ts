@@ -105,7 +105,7 @@ export const spaceRoutes = new Hono<AppEnv>()
     c.header('cache-control', 'no-cache, no-transform');
     return streamSSE(c, async (stream) => {
       const unsubscribe = subscribe(userId, (event) => {
-        stream.writeSSE({ event: 'change', data: JSON.stringify(event) }).catch(() => {});
+        stream.writeSSE({ event: event.type, data: JSON.stringify(event) }).catch(() => {});
       });
       // Proxies (Cloudflare included) drop idle connections; a periodic ping keeps it open.
       const ping = setInterval(() => {

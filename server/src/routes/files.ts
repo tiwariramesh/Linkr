@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { Readable } from 'node:stream';
 import { eq } from 'drizzle-orm';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { z } from 'zod';
 import { config } from '../config.ts';
@@ -37,6 +37,46 @@ const thumbnailLimit = bodyLimit({
 
 const contentDisposition = (type: 'inline' | 'attachment', name: string) =>
   `${type}; filename="${name.replace(/[^\x20-\x7e]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+
+// Sends a stored file: inline when the browser can show it safely, otherwise as a download. Supports
+// byte ranges so videos can seek. Add ?download to always save it. Used by members and public pages.
+export function fileResponse(c: Context, file: typeof files.$inferSelect): Response {
+  const fullPath = filePath(file.itemId, file.id);
+  if (!fs.existsSync(fullPath)) throw new HttpError(404, 'This file is missing from the server');
+  const size = fs.statSync(fullPath).size;
+
+  const inline = c.req.query('download') === undefined && isInlineType(file.mime);
+  const headers = new Headers({
+    'content-type': inline ? file.mime : 'application/octet-stream',
+    'content-disposition': contentDisposition(inline ? 'inline' : 'attachment', file.name),
+    'cache-control': 'private, max-age=31536000, immutable',
+    'accept-ranges': 'bytes',
+    'x-content-type-options': 'nosniff',
+  });
+  // Uploaded SVGs and text could carry script; never let it run on this origin.
+  if (!isPassiveType(file.mime)) {
+    headers.set('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+  }
+
+  let start = 0;
+  let end = size - 1;
+  let status = 200;
+  const range = /^bytes=(\d*)-(\d*)$/.exec(c.req.header('range') ?? '');
+  if (range && (range[1] || range[2])) {
+    start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
+    end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+    if (start > end || start >= size) {
+      headers.set('content-range', `bytes */${size}`);
+      return new Response(null, { status: 416, headers });
+    }
+    status = 206;
+    headers.set('content-range', `bytes ${start}-${end}/${size}`);
+  }
+  headers.set('content-length', String(end - start + 1));
+  if (c.req.method === 'HEAD' || size === 0) return new Response(null, { status, headers });
+  const stream = Readable.toWeb(fs.createReadStream(fullPath, { start, end })) as ReadableStream;
+  return new Response(stream, { status, headers });
+}
 
 export const fileRoutes = new Hono<AppEnv>()
   // The file is the raw request body, so large uploads stream straight to disk.
@@ -138,39 +178,5 @@ export const fileRoutes = new Hono<AppEnv>()
       .get();
     if (!file) throw new HttpError(404, 'File not found');
     requireRole(c.var.user.id, file.spaceId, 'viewer');
-    const fullPath = filePath(file.itemId, file.id);
-    if (!fs.existsSync(fullPath)) throw new HttpError(404, 'This file is missing from the server');
-    const size = fs.statSync(fullPath).size;
-
-    const inline = c.req.query('download') === undefined && isInlineType(file.mime);
-    const headers = new Headers({
-      'content-type': inline ? file.mime : 'application/octet-stream',
-      'content-disposition': contentDisposition(inline ? 'inline' : 'attachment', file.name),
-      'cache-control': 'private, max-age=31536000, immutable',
-      'accept-ranges': 'bytes',
-      'x-content-type-options': 'nosniff',
-    });
-    // Uploaded SVGs and text could carry script; never let it run on this origin.
-    if (!isPassiveType(file.mime)) {
-      headers.set('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
-    }
-
-    let start = 0;
-    let end = size - 1;
-    let status = 200;
-    const range = /^bytes=(\d*)-(\d*)$/.exec(c.req.header('range') ?? '');
-    if (range && (range[1] || range[2])) {
-      start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
-      end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
-      if (start > end || start >= size) {
-        headers.set('content-range', `bytes */${size}`);
-        return new Response(null, { status: 416, headers });
-      }
-      status = 206;
-      headers.set('content-range', `bytes ${start}-${end}/${size}`);
-    }
-    headers.set('content-length', String(end - start + 1));
-    if (c.req.method === 'HEAD' || size === 0) return new Response(null, { status, headers });
-    const stream = Readable.toWeb(fs.createReadStream(fullPath, { start, end })) as ReadableStream;
-    return new Response(stream, { status, headers });
+    return fileResponse(c, file);
   });

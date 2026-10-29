@@ -150,10 +150,16 @@ async function uploadFor(file: File, folderId: string | null) {
   return fileUrl(item.file);
 }
 
-function useNoteEditor(body: string | null, fallbackText: string, placeholder: string, folderId: string | null) {
+// `folderId` undefined turns uploads off (private drafts: uploads become folder items everyone can see).
+function useNoteEditor(
+  body: string | null,
+  fallbackText: string,
+  placeholder: string,
+  folderId: string | null | undefined
+) {
   const folderRef = useRef(folderId);
   useEffect(() => {
-    folderRef.current = folderId;
+    folderRef.current = folderId ?? null;
   });
   const [stored] = useState(() => parseBody(body));
   const editor = useCreateBlockNote(
@@ -161,7 +167,7 @@ function useNoteEditor(body: string | null, fallbackText: string, placeholder: s
       schema,
       initialContent: initialBlocks(stored, fallbackText),
       placeholders: { emptyDocument: placeholder, default: "Type '/' for commands" },
-      uploadFile: (file) => uploadFor(file, folderRef.current),
+      uploadFile: folderId === undefined ? undefined : (file) => uploadFor(file, folderRef.current ?? null),
       // A pasted YouTube or Vimeo link becomes a player.
       pasteHandler: ({ event, editor: target, defaultPasteHandler }) => {
         const text = event.clipboardData?.getData('text/plain').trim() ?? '';
@@ -202,14 +208,17 @@ export function BlockEditor({
   folderId,
   onSave,
   className,
+  editable = true,
 }: {
   body: string | null;
   fallbackText?: string;
   placeholder: string;
-  // Where pasted and dropped files are uploaded (null = Inbox).
-  folderId: string | null;
+  // Where pasted and dropped files are uploaded (null = Inbox; undefined = no uploads).
+  folderId: string | null | undefined;
   onSave: (save: EditorSave) => void;
   className?: string;
+  // Viewers of a shared space read notes without changing them.
+  editable?: boolean;
 }) {
   const theme = useTheme((state) => state.resolved);
   const { editor, stored } = useNoteEditor(body, fallbackText, placeholder, folderId);
@@ -260,6 +269,7 @@ export function BlockEditor({
           editor={editor}
           theme={theme}
           slashMenu={false}
+          editable={editable}
           onChange={() => {
             if (applying.current) return;
             dirty.current = true;
@@ -275,11 +285,13 @@ export function BlockEditor({
         </BlockNoteView>
       </div>
       <p className="text-muted-foreground border-t px-4 py-1 text-[11px]" aria-live="polite">
-        {status === 'editing'
-          ? 'Editing…'
-          : status === 'saved'
-            ? 'Saved'
-            : "Changes save automatically · type '/' for headings, lists, images, videos and more"}
+        {!editable
+          ? 'View only'
+          : status === 'editing'
+            ? 'Editing…'
+            : status === 'saved'
+              ? 'Saved'
+              : "Changes save automatically · type '/' for headings, lists, images, videos and more"}
       </p>
     </div>
   );

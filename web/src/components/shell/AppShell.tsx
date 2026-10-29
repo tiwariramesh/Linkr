@@ -26,7 +26,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { KIND_ICON } from '@/lib/items';
 import { setNavigator } from '@/lib/navigation';
 import { childFolders, isInside, itemsInFolder } from '@/lib/tree';
-import { moveItems, openSpace, updateFolder, updateItem, useStore } from '@/store/store';
+import { moveItems, openSpace, updateFolder, updateItem, useCanEdit, useStore } from '@/store/store';
 import { openPalette, setMobileNav, useUi } from '@/store/ui';
 
 // Dialogs load on first use, keeping the first page load small.
@@ -37,6 +37,15 @@ const SettingsDialog = lazy(() =>
 );
 const RunAgainDialog = lazy(() =>
   import('@/components/folders/RunAgainDialog').then((m) => ({ default: m.RunAgainDialog }))
+);
+const SpaceSettingsDialog = lazy(() =>
+  import('@/components/sharing/SpaceSettingsDialog').then((m) => ({ default: m.SpaceSettingsDialog }))
+);
+const ShareFolderDialog = lazy(() =>
+  import('@/components/sharing/ShareDialogs').then((m) => ({ default: m.ShareFolderDialog }))
+);
+const SendItemDialog = lazy(() =>
+  import('@/components/sharing/ShareDialogs').then((m) => ({ default: m.SendItemDialog }))
 );
 const CommandPalette = lazy(() =>
   import('@/components/shell/CommandPalette').then((m) => ({ default: m.CommandPalette }))
@@ -98,6 +107,9 @@ export function AppShell() {
   const settingsOpen = useUi((state) => state.settingsOpen);
   const paletteOpen = useUi((state) => state.paletteOpen);
   const runningAgain = useUi((state) => state.runAgainFolderId !== null);
+  const spaceSettingsOpen = useUi((state) => state.spaceSettingsOpen);
+  const sharingFolder = useUi((state) => state.shareFolderId !== null);
+  const sendingItem = useUi((state) => state.sendItemId !== null);
   // Mounted on first use, then kept so it opens instantly.
   const [paletteUsed, setPaletteUsed] = useState(false);
   if (paletteOpen && !paletteUsed) setPaletteUsed(true);
@@ -124,11 +136,12 @@ export function AppShell() {
     void openSpace(spaceId);
   }, [spaceId, spaces, navigate]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  const canEdit = useCanEdit();
+  const pointer = useSensor(PointerSensor, { activationConstraint: { distance: 6 } });
+  const touch = useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } });
+  const keyboard = useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates });
+  // Viewers can't move things, so nothing is draggable for them.
+  const sensors = useSensors(...(canEdit ? [pointer, touch, keyboard] : []));
 
   const onDragStart = (event: DragStartEvent) => {
     useDragState.setState({ dragging: event.active.data.current as DragData, folderDrop: null });
@@ -251,6 +264,9 @@ export function AppShell() {
         {settingsOpen && <SettingsDialog />}
         {paletteUsed && <CommandPalette />}
         {runningAgain && <RunAgainDialog />}
+        {spaceSettingsOpen && <SpaceSettingsDialog />}
+        {sharingFolder && <ShareFolderDialog />}
+        {sendingItem && <SendItemDialog />}
       </Suspense>
       <Capture />
     </DndContext>

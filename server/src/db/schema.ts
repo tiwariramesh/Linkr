@@ -1,4 +1,12 @@
-import { type AnySQLiteColumn, index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import {
+  type AnySQLiteColumn,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 
 // ---- Accounts (shape required by Better Auth with the username plugin) ----
 
@@ -125,6 +133,10 @@ export const folders = sqliteTable(
     pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
     archivedAt: text('archived_at'),
     deletedAt: text('deleted_at'),
+    // A public, read-only page for the folder at /p/<shareToken>; null when not shared.
+    shareToken: text('share_token').unique(),
+    // Whether that page includes the session notes.
+    shareNotes: integer('share_notes', { mode: 'boolean' }).notNull().default(false),
     // The folder this one was copied from with "Run again" (null if the original has since been deleted).
     copiedFrom: text('copied_from').references((): AnySQLiteColumn => folders.id, { onDelete: 'set null' }),
     createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
@@ -267,6 +279,58 @@ export const itemTags = sqliteTable(
       .references(() => tags.id, { onDelete: 'cascade' }),
   },
   (t) => [primaryKey({ columns: [t.itemId, t.tagId] }), index('item_tags_tag_idx').on(t.tagId)]
+);
+
+// An invitation to join a space, waiting for the invited account to accept or decline.
+export const spaceInvites = sqliteTable(
+  'space_invites',
+  {
+    id: text('id').primaryKey(),
+    spaceId: text('space_id')
+      .notNull()
+      .references(() => spaces.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['editor', 'viewer'] }).notNull(),
+    invitedBy: text('invited_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [uniqueIndex('space_invites_space_user_idx').on(t.spaceId, t.userId)]
+);
+
+// What each account is told about: invitations, links and notes sent to them, people joining their spaces.
+// `data` carries what the notification shows, so it still reads correctly after the source changes.
+export const notifications = sqliteTable(
+  'notifications',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['invite', 'sent', 'joined'] }).notNull(),
+    data: text('data', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+    readAt: text('read_at'),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [index('notifications_user_idx').on(t.userId, t.createdAt)]
+);
+
+// Private draft notes: one per person per folder, never shown to other members.
+export const drafts = sqliteTable(
+  'drafts',
+  {
+    folderId: text('folder_id')
+      .notNull()
+      .references(() => folders.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    body: text('body'),
+    notes: text('notes').notNull().default(''),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.folderId, t.userId] })]
 );
 
 // Append-only change log. Devices sync by asking for everything after the last `seq` they saw;

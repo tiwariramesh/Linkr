@@ -494,6 +494,184 @@ describe('Linkr API', () => {
     assert.ok(!fs.existsSync(dir), 'deleting the folder deletes its photo');
   });
 
+  test('shared spaces: invitations, roles, leaving, and private drafts', async () => {
+    const host = await signUp('host');
+    const guest = await signUp('guest');
+    const stranger = await signUp('stranger');
+    const team = (await host.call('POST', '/api/spaces', { name: 'Teaching team' })).body;
+    const notificationsOf = async (who: typeof host) => (await who.call('GET', '/api/notifications')).body;
+
+    assert.equal((await host.call('POST', `/api/spaces/${host.spaceId}/invites`, { login: 'guest' })).status, 422);
+    assert.equal(
+      (await host.call('POST', `/api/spaces/${team.id}/invites`, { login: 'nobody-by-that-name' })).status,
+      404
+    );
+    assert.equal((await guest.call('POST', `/api/spaces/${team.id}/invites`, { login: 'stranger' })).status, 404);
+    const invite = (await host.call('POST', `/api/spaces/${team.id}/invites`, { login: 'GUEST', role: 'viewer' })).body;
+    assert.equal(invite.username, 'guest');
+    const [inviteNote] = await notificationsOf(guest);
+    assert.deepEqual(
+      [inviteNote.kind, inviteNote.data.inviteId, inviteNote.data.spaceName],
+      ['invite', invite.id, 'Teaching team']
+    );
+    assert.equal(
+      (await guest.call('GET', `/api/spaces/${team.id}/snapshot`)).status,
+      404,
+      'not a member until accepted'
+    );
+    assert.equal(
+      (await stranger.call('POST', `/api/invites/${invite.id}/accept`)).status,
+      404,
+      'only the invitee can answer'
+    );
+
+    assert.equal((await guest.call('POST', `/api/invites/${invite.id}/accept`)).body.spaceId, team.id);
+    assert.equal((await guest.call('GET', `/api/spaces/${team.id}/snapshot`)).status, 200);
+    assert.equal(
+      (await guest.call('POST', '/api/folders', { spaceId: team.id, title: 'x' })).status,
+      403,
+      'viewers read only'
+    );
+    assert.equal((await notificationsOf(host))[0].kind, 'joined');
+    assert.equal((await notificationsOf(guest))[0].data.answer, 'accepted');
+
+    const members = (await guest.call('GET', `/api/spaces/${team.id}/members`)).body;
+    assert.deepEqual(
+      members.members.map((m: { username: string; role: string }) => [m.username, m.role]),
+      [
+        ['host', 'owner'],
+        ['guest', 'viewer'],
+      ]
+    );
+    assert.deepEqual(members.invites, [], 'only owners see pending invitations');
+    assert.equal((await stranger.call('GET', `/api/spaces/${team.id}/members`)).status, 404);
+
+    await host.call('PATCH', `/api/spaces/${team.id}/members/${guest.user.id}`, { role: 'editor' });
+    const folder = await guest.call('POST', '/api/folders', { spaceId: team.id, title: 'Week 8' });
+    assert.equal(folder.status, 201, 'editors can add');
+    assert.equal(
+      (await host.call('PATCH', `/api/spaces/${team.id}/members/${host.user.id}`, { role: 'editor' })).status,
+      422
+    );
+    assert.equal(
+      (await host.call('DELETE', `/api/spaces/${team.id}/members/${host.user.id}`)).status,
+      422,
+      'the last owner can’t leave'
+    );
+
+    // Drafts are private to each member.
+    await host.call('PUT', `/api/folders/${folder.body.id}/draft`, { body: null, notes: 'Only I can see this' });
+    assert.equal((await host.call('GET', `/api/folders/${folder.body.id}/draft`)).body.notes, 'Only I can see this');
+    assert.equal((await guest.call('GET', `/api/folders/${folder.body.id}/draft`)).body, null);
+    assert.equal((await stranger.call('GET', `/api/folders/${folder.body.id}/draft`)).status, 404);
+
+    // Declining leaves no membership.
+    const second = (await host.call('POST', `/api/spaces/${team.id}/invites`, { login: 'stranger@example.com' })).body;
+    await stranger.call('POST', `/api/invites/${second.id}/decline`);
+    assert.equal((await stranger.call('GET', `/api/spaces/${team.id}/snapshot`)).status, 404);
+
+    assert.equal(
+      (await guest.call('DELETE', `/api/spaces/${team.id}/members/${guest.user.id}`)).status,
+      204,
+      'members can leave'
+    );
+    assert.equal((await guest.call('GET', `/api/spaces/${team.id}/snapshot`)).status, 404);
+  });
+
+  type PublicPage = {
+    folder: { title: string; description: string; notes: { text: string } | null };
+    items: { kind: string; notes: string }[];
+  };
+
+  test('sending a link or note to another account, and public read-only folder pages', async () => {
+    const sender = await signUp('sender');
+    const reader = await signUp('reader');
+    const note = (
+      await sender.call('POST', '/api/items', { spaceId: sender.spaceId, kind: 'note', notes: 'Exit ticket ideas' })
+    ).body;
+    assert.equal((await sender.call('POST', `/api/items/${note.id}/send`, { to: 'sender' })).status, 422);
+    assert.equal(
+      (await sender.call('POST', `/api/items/${note.id}/send`, { to: 'reader', message: 'For Friday' })).status,
+      201
+    );
+    const [sent] = (await reader.call('GET', '/api/notifications')).body;
+    assert.deepEqual(
+      [sent.kind, sent.data.from, sent.data.title, sent.data.message],
+      ['sent', 'sender', 'Exit ticket ideas', 'For Friday']
+    );
+    const saved = (await reader.call('POST', `/api/notifications/${sent.id}/save`, {})).body;
+    assert.deepEqual(
+      [saved.spaceId, saved.folderId, saved.notes],
+      [reader.spaceId, null, 'Exit ticket ideas'],
+      'saved to their Inbox'
+    );
+    assert.equal((await reader.call('POST', '/api/notifications/read', {})).status, 204);
+    assert.ok((await reader.call('GET', '/api/notifications')).body.every((n: { readAt: string | null }) => n.readAt));
+
+    // Public page for a folder.
+    const folder = (await sender.call('POST', '/api/folders', { spaceId: sender.spaceId, title: 'Week 9' })).body;
+    await sender.call('PATCH', `/api/folders/${folder.id}`, { notes: 'Session plan', description: 'Feedback' });
+    await sender.call('POST', '/api/items', {
+      spaceId: sender.spaceId,
+      folderId: folder.id,
+      kind: 'note',
+      notes: 'Handout text',
+    });
+    const link = (
+      await sender.call('POST', '/api/items', {
+        spaceId: sender.spaceId,
+        folderId: folder.id,
+        url: 'https://example.com/',
+      })
+    ).body;
+    await sender.call('PATCH', `/api/items/${link.id}`, { notes: 'private: ask Sam' });
+    const shared = (await sender.call('PATCH', `/api/folders/${folder.id}/share`, { enabled: true })).body;
+    assert.match(shared.shareToken, /^[\w-]{20,40}$/);
+    const publicPage = async (token: string) => {
+      const response = await fetch(`${BASE}/api/public/${token}`);
+      return {
+        status: response.status,
+        robots: response.headers.get('x-robots-tag'),
+        body: (response.ok ? await response.json() : null) as PublicPage,
+      };
+    };
+    let page = await publicPage(shared.shareToken);
+    assert.equal(page.status, 200, 'no sign-in needed');
+    assert.match(page.robots!, /noindex/);
+    assert.deepEqual(
+      [page.body.folder.title, page.body.folder.description, page.body.folder.notes],
+      ['Week 9', 'Feedback', null]
+    );
+    assert.equal(page.body.items.length, 2);
+    assert.equal(page.body.items.find((i) => i.kind === 'link')!.notes, '', 'notes on links stay private');
+    assert.equal(page.body.items.find((i) => i.kind === 'note')!.notes, 'Handout text');
+
+    await sender.call('PATCH', `/api/folders/${folder.id}/share`, { enabled: true, notes: true });
+    page = await publicPage(shared.shareToken);
+    assert.equal(page.body.folder.notes!.text, 'Session plan', 'session notes when chosen');
+    assert.equal((await reader.call('PATCH', `/api/folders/${folder.id}/share`, { enabled: false })).status, 404);
+
+    await sender.call('PATCH', `/api/folders/${folder.id}/share`, { enabled: false });
+    assert.equal((await publicPage(shared.shareToken)).status, 404, 'turning sharing off kills the link');
+    const again = (await sender.call('PATCH', `/api/folders/${folder.id}/share`, { enabled: true })).body;
+    assert.notEqual(again.shareToken, shared.shareToken, 'turning it back on makes a new link');
+    assert.equal((await publicPage('not-a-real-token-at-all-xx')).status, 404);
+  });
+
+  test('a shared space outlives its owner’s account, with the longest-standing member as owner', async () => {
+    const founder = await signUp('founder');
+    const member = await signUp('member');
+    const team = (await founder.call('POST', '/api/spaces', { name: 'Department' })).body;
+    const invite = (await founder.call('POST', `/api/spaces/${team.id}/invites`, { login: 'member' })).body;
+    await member.call('POST', `/api/invites/${invite.id}/accept`);
+    assert.equal((await founder.call('DELETE', '/api/me', { password: 'password123' })).status, 204);
+    const after = (await member.call('GET', `/api/spaces/${team.id}/members`)).body.members;
+    assert.deepEqual(
+      after.map((m: { username: string; role: string }) => [m.username, m.role]),
+      [['member', 'owner']]
+    );
+  });
+
   test('deleting an account removes its Personal space and everything in it', async () => {
     const { call, spaceId } = await signUp('leaver');
     await call('POST', '/api/items', { spaceId, kind: 'note', notes: 'bye' });

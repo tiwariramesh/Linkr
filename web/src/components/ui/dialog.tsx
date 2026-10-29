@@ -51,6 +51,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -60,6 +61,14 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        // Linkr: Radix focuses the first field and selects its text a moment after opening. If a field
+        // already has focus (autoFocus), leave it alone, or a fast typist's first letters get selected and
+        // typed over.
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event)
+          const content = event.currentTarget as HTMLElement | null
+          if (!event.defaultPrevented && content?.contains(document.activeElement)) event.preventDefault()
+        }}
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className

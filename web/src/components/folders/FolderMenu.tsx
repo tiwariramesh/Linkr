@@ -3,6 +3,7 @@ import {
   ArchiveRestore,
   Ban,
   FolderPlus,
+  Globe,
   Palette,
   Pencil,
   Presentation,
@@ -17,9 +18,9 @@ import { useNavigate } from 'react-router';
 import { COLOR_NAMES, COLORS, FOLDER_ICONS } from '@/lib/colors';
 import type { Folder } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { createFolder, trashFolder, updateFolder } from '@/store/store';
+import { createFolder, trashFolder, updateFolder, useCanEdit } from '@/store/store';
 import { startPresenting } from '@/lib/present';
-import { askRunAgain, focusFolderTitle, setExpanded } from '@/store/ui';
+import { askRunAgain, askShareFolder, focusFolderTitle, setExpanded } from '@/store/ui';
 
 // The same actions appear in the "…" menu and the right-click menu; each passes in its own menu parts.
 type MenuParts = {
@@ -45,6 +46,7 @@ export function FolderMenuItems({
   onRename?: () => void;
 }) {
   const navigate = useNavigate();
+  const canEdit = useCanEdit();
   const { Item, Separator, Sub, SubTrigger, SubContent } = parts;
 
   const addSubfolder = async () => {
@@ -55,6 +57,15 @@ export function FolderMenuItems({
       navigate(`/s/${folder.spaceId}/f/${child.id}`);
     }
   };
+
+  // Viewers can present a folder but not change it.
+  if (!canEdit) {
+    return (
+      <Item onSelect={() => startPresenting(folder.spaceId, folder.id)}>
+        <Presentation /> Present
+      </Item>
+    );
+  }
 
   return (
     <>
@@ -124,6 +135,9 @@ export function FolderMenuItems({
       </Item>
       <Item onSelect={() => askRunAgain(folder.id)}>
         <Repeat /> Run again…
+      </Item>
+      <Item onSelect={() => askShareFolder(folder.id)}>
+        <Globe /> {folder.shareToken ? 'Public link (on)…' : 'Share a public link…'}
       </Item>
       <Separator />
       <Item onSelect={() => updateFolder(folder.id, { archived: !folder.archivedAt })}>

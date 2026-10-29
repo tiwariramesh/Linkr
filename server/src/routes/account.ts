@@ -8,6 +8,7 @@ import { items, spaceMembers, spaces, user } from '../db/schema.ts';
 import { HttpError, parseInput, rateLimiter, type AppEnv } from '../http.ts';
 import { userSpaces } from '../lib/data.ts';
 import { clearSpaceCovers } from '../lib/covers.ts';
+import { repairOwnerlessSpaces } from './sharing.ts';
 import { clearItemStorage } from '../lib/files.ts';
 
 const limitAuthAttempts = rateLimiter(10, 60_000);
@@ -141,6 +142,8 @@ export const accountRoutes = new Hono<AppEnv>()
       clearItemStorage(itemIds);
       clearSpaceCovers(orphaned);
     }
+    // Shared spaces the account owned stay with their other members.
+    repairOwnerlessSpaces();
     forwardCookies(c, result.headers);
     return c.body(null, 204);
   });

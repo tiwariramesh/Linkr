@@ -39,6 +39,9 @@ export type Folder = {
   deletedAt: string | null;
   // The folder this one was copied from with "Run again".
   copiedFrom: string | null;
+  // Public read-only page at /p/<shareToken> (null = not shared), and whether it shows the session notes.
+  shareToken: string | null;
+  shareNotes: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -114,6 +117,21 @@ export type SearchHit = {
   id: string;
   field: 'title' | 'notes' | 'page' | 'highlight' | 'session';
   snippet: string;
+};
+
+export type Role = 'owner' | 'editor' | 'viewer';
+export type Member = { userId: string; username: string; role: Role; joinedAt: string };
+export type PendingInvite = { id: string; username: string; role: 'editor' | 'viewer'; createdAt: string };
+
+// What the bell shows. `data` depends on the kind:
+// invite: inviteId, spaceId, spaceName, role, from, answer? · joined: spaceId, spaceName, who ·
+// sent: from, message, kind ('link' | 'note'), title, url, description, siteName, notes, body, savedItemId?
+export type AppNotification = {
+  id: string;
+  kind: 'invite' | 'sent' | 'joined';
+  data: Record<string, string | null | undefined>;
+  readAt: string | null;
+  createdAt: string;
 };
 
 export type AppInfo = {

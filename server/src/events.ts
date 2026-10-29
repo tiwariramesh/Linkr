@@ -7,10 +7,16 @@ import { memberIds } from './lib/access.ts';
 
 export type Entity = 'space' | 'folder' | 'item' | 'tag' | 'highlight';
 export type Change = { entity: Entity; id: string; op?: 'upsert' | 'delete' };
-export type SpaceEvent = { spaceId: string; seq: number };
+// What a signed-in tab hears about over /api/events: a space it can see changed, or something about
+// the account itself (notifications, which spaces it belongs to, its private drafts).
+export type UserEvent =
+  | { type: 'change'; spaceId: string; seq: number }
+  | { type: 'notifications' }
+  | { type: 'spaces' }
+  | { type: 'draft'; folderId: string };
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type Listener = (event: SpaceEvent) => void;
+type Listener = (event: UserEvent) => void;
 
 const listeners = new Map<string, Set<Listener>>();
 
@@ -28,9 +34,11 @@ export function subscribe(userId: string, listener: Listener) {
 }
 
 export function notifySpace(spaceId: string, seq: number) {
-  for (const userId of memberIds(spaceId)) {
-    for (const listener of listeners.get(userId) ?? []) listener({ spaceId, seq });
-  }
+  for (const userId of memberIds(spaceId)) notifyUser(userId, { type: 'change', spaceId, seq });
+}
+
+export function notifyUser(userId: string, event: UserEvent) {
+  for (const listener of listeners.get(userId) ?? []) listener(event);
 }
 
 /**

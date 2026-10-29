@@ -20,7 +20,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { ItemNotes, SessionNotes } from '@/components/editor/Notes';
+import { DraftNotes, ItemNotes, SessionNotes } from '@/components/editor/Notes';
 import { ItemHighlights } from '@/components/highlights/HighlightList';
 import { Favicon, ItemMenu } from '@/components/items/ItemParts';
 import { defaultMode, Preview, type LinkMode } from '@/components/preview/Preview';
@@ -37,7 +37,7 @@ import { folderPath, itemsInFolder } from '@/lib/tree';
 import { sameLinkElsewhere } from '@/lib/urls';
 import type { Folder, Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { updateItem, useStore } from '@/store/store';
+import { updateItem, useCanEdit, useStore } from '@/store/store';
 import { focusHighlight, focusItemTitle, showItemNotes, useUi } from '@/store/ui';
 
 const SPLIT_KEY = 'linkr-split';
@@ -115,7 +115,12 @@ function NotesPane({ item, folder }: { item: Item; folder: Folder | undefined })
     ...(item.kind === 'link'
       ? [{ id: 'highlights', label: `Highlights${highlightCount ? ` ${highlightCount}` : ''}` }]
       : []),
-    ...(folder ? [{ id: 'session', label: 'Session notes' }] : []),
+    ...(folder
+      ? [
+          { id: 'session', label: 'Session notes' },
+          { id: 'draft', label: 'My draft' },
+        ]
+      : []),
   ];
   const [tab, setTab] = useState(tabs[0]?.id);
   if (!tabs.length) return null;
@@ -149,6 +154,8 @@ function NotesPane({ item, folder }: { item: Item; folder: Folder | undefined })
           <ItemNotes item={item} />
         ) : current === 'highlights' ? (
           <ItemHighlights item={item} />
+        ) : current === 'draft' ? (
+          folder && <DraftNotes folder={folder} />
         ) : (
           folder && <SessionNotes folder={folder} />
         )}
@@ -211,6 +218,7 @@ function NoteTitle({ item }: { item: Item }) {
   const [value, setValue] = useState(item.title);
   const ref = useRef<HTMLTextAreaElement>(null);
   const focusId = useUi((s) => s.focusTitleItemId);
+  const canEdit = useCanEdit();
   const fit = () => {
     const el = ref.current;
     if (!el) return;
@@ -254,6 +262,7 @@ function NoteTitle({ item }: { item: Item }) {
         if (event.key === 'Escape') setValue(item.title);
       }}
       aria-label="Note title"
+      readOnly={!canEdit}
       placeholder="Untitled"
       className="placeholder:text-muted-foreground/50 block w-full resize-none overflow-hidden bg-transparent text-3xl leading-tight font-bold tracking-tight outline-none sm:text-4xl"
     />
