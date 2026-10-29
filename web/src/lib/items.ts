@@ -1,7 +1,7 @@
 import { File, FileText, Film, Globe, Image as ImageIcon, StickyNote } from 'lucide-react';
 import { formatBytes, hostOf } from '@/lib/format';
 import type { FileInfo, Item, ItemKind } from '@/lib/types';
-import { editItem } from '@/store/ui';
+import { navigateTo } from '@/lib/navigation';
 
 export const KIND_ICON: Record<ItemKind, typeof Globe> = {
   link: Globe,
@@ -25,11 +25,21 @@ export function itemSubtitle(item: Item): string {
   return item.siteName || hostOf(item.url);
 }
 
-// Links and files open in a new tab; notes open in the editor.
+export const itemPath = (item: Item) => `/s/${item.spaceId}/i/${item.id}`;
+
+// The page or file itself, outside Linkr. Notes have none.
+export function externalUrl(item: Item): string | null {
+  if (item.file) return item.file.id ? fileUrl(item.file) : null;
+  return item.url || null;
+}
+
+// Opens the split view: the item beside its notes.
 export function openItem(item: Item) {
-  if (item.file) {
-    // An empty id means it is still uploading.
-    if (item.file.id) window.open(fileUrl(item.file), '_blank', 'noopener');
-  } else if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer');
-  else editItem(item.id);
+  if (item.file && !item.file.id) return; // still uploading
+  navigateTo(itemPath(item));
+}
+
+export function openInNewTab(item: Item) {
+  const url = externalUrl(item);
+  if (url) window.open(url, '_blank', 'noopener,noreferrer');
 }

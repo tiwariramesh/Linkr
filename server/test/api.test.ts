@@ -277,6 +277,22 @@ describe('Linkr API', () => {
     assert.equal((await send('GET', fileUrl)).status, 404);
   });
 
+  test('rich notes are saved as editor documents on items and folders', async () => {
+    const { call, spaceId } = await signUp('writer');
+    const folder = (await call('POST', '/api/folders', { spaceId, title: 'Week 3' })).body;
+    const doc = JSON.stringify({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hi' }] }],
+    });
+    const saved = (await call('PATCH', `/api/folders/${folder.id}`, { body: doc, notes: 'Hi' })).body;
+    assert.deepEqual([saved.body, saved.notes], [doc, 'Hi']);
+    assert.equal((await call('PATCH', `/api/folders/${folder.id}`, { body: '{"type":"x"}' })).status, 422);
+
+    const note = (await call('POST', '/api/items', { spaceId, kind: 'note', notes: 'x' })).body;
+    assert.equal((await call('PATCH', `/api/items/${note.id}`, { body: doc, notes: 'Hi' })).body.body, doc);
+    assert.equal((await call('GET', `/api/items/${note.id}/content`)).status, 404, 'notes have no reader copy');
+  });
+
   test('deleting an account removes its Personal space and everything in it', async () => {
     const { call, spaceId } = await signUp('leaver');
     await call('POST', '/api/items', { spaceId, kind: 'note', notes: 'bye' });

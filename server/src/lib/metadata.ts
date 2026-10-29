@@ -1,5 +1,6 @@
 import { parseHTML } from 'linkedom';
 import { HttpError } from '../http.ts';
+import { extractArticle, isFrameable, type Article } from './reader.ts';
 import { readLimited, safeFetch } from './safe-fetch.ts';
 
 export type LinkKind = 'link' | 'video' | 'pdf' | 'image';
@@ -11,6 +12,9 @@ export type LinkMetadata = {
   image: string | null;
   favicon: string | null;
   siteName: string;
+  frameable: boolean;
+  // Readable copy of an article page (not for videos, files or pages with too little text).
+  article: Article | null;
 };
 
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
@@ -32,7 +36,7 @@ export function isVideoUrl(url: string): boolean {
 }
 
 // Open Graph first, then standard tags, then the first image on the page.
-export function extractMetadata(html: string, pageUrl: string): Omit<LinkMetadata, 'kind'> {
+export function extractMetadata(html: string, pageUrl: string): Omit<LinkMetadata, 'kind' | 'frameable' | 'article'> {
   const { document } = parseHTML(html);
   const attr = (selector: string, name = 'content') => {
     const value = document.querySelector(selector)?.getAttribute(name)?.trim();
@@ -72,19 +76,20 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   const type = (response.headers.get('content-type') ?? '').toLowerCase();
   const siteName = hostName(finalUrl);
   const favicon = new URL('/favicon.ico', finalUrl).toString();
+  const base = { favicon, siteName, frameable: isFrameable(response.headers), article: null };
 
   if (type.includes('application/pdf')) {
     await response.body?.cancel().catch(() => {});
     const file = decodeURIComponent(new URL(finalUrl).pathname.split('/').pop() ?? '').replace(/\.pdf$/i, '');
-    return { kind: 'pdf', title: file.trim() || siteName, description: null, image: null, favicon, siteName };
+    return { ...base, kind: 'pdf', title: file.trim() || siteName, description: null, image: null };
   }
   if (type.startsWith('image/')) {
     await response.body?.cancel().catch(() => {});
-    return { kind: 'image', title: null, description: null, image: finalUrl, favicon, siteName };
+    return { ...base, kind: 'image', title: null, description: null, image: finalUrl };
   }
   if (type && !type.includes('html') && !type.includes('xml')) {
     await response.body?.cancel().catch(() => {});
-    return { kind: 'link', title: null, description: null, image: null, favicon, siteName };
+    return { ...base, kind: 'link', title: null, description: null, image: null };
   }
 
   const buffer = await readLimited(response, MAX_HTML_BYTES);
@@ -95,5 +100,11 @@ export async function fetchLinkMetadata(url: string): Promise<LinkMetadata> {
   } catch {
     html = buffer.toString('utf8');
   }
-  return { kind: isVideoUrl(finalUrl) ? 'video' : 'link', ...extractMetadata(html, finalUrl) };
+  const video = isVideoUrl(finalUrl);
+  return {
+    ...base,
+    kind: video ? 'video' : 'link',
+    ...extractMetadata(html, finalUrl),
+    article: video ? null : extractArticle(html, finalUrl),
+  };
 }

@@ -2,12 +2,12 @@ import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { db, nowIso } from '../db/client.ts';
-import { items, itemTags } from '../db/schema.ts';
+import { itemContent, items, itemTags } from '../db/schema.ts';
 import { mutate } from '../events.ts';
 import { HttpError, parseInput, type AppEnv } from '../http.ts';
 import { assertFolderInSpace, assertTagsInSpace, loadItem, requireRole } from '../lib/access.ts';
 import { getItemWire } from '../lib/data.ts';
-import { idSchema, newId } from '../lib/ids.ts';
+import { documentSchema, idSchema, newId } from '../lib/ids.ts';
 import { clearItemStorage } from '../lib/files.ts';
 import {
   clearItemImages,
@@ -17,7 +17,7 @@ import {
   writeCachedImage,
   type ImageFile,
 } from '../lib/images.ts';
-import { enqueueFetch, placeholderTitle } from '../lib/link-queue.ts';
+import { enqueueFetch, fetchReaderCopy, placeholderTitle } from '../lib/link-queue.ts';
 import { isVideoUrl } from '../lib/metadata.ts';
 import { isValidPosition, itemPositionsAtTop } from '../lib/positions.ts';
 import { colorSchema } from './spaces.ts';
@@ -39,6 +39,7 @@ const itemFields = {
   url: z.union([httpUrl, z.literal('')]),
   description: z.string().max(10_000),
   notes: z.string().max(200_000),
+  body: documentSchema.nullable(),
   image: z.union([httpUrl, z.literal('')]),
   color: colorSchema.nullable(),
   pinned: z.boolean(),
@@ -139,11 +140,12 @@ export const itemRoutes = new Hono<AppEnv>()
       tx.update(items)
         .set({
           ...fields,
-          ...(urlChanged && fields.url ? { fetchStatus: 'pending' as const } : {}),
+          ...(urlChanged ? { frameable: null, ...(fields.url ? { fetchStatus: 'pending' as const } : {}) } : {}),
           updatedAt: nowIso(),
         })
         .where(eq(items.id, item.id))
         .run();
+      if (urlChanged) tx.delete(itemContent).where(eq(itemContent.itemId, item.id)).run();
       if (tagIds) {
         tx.delete(itemTags).where(eq(itemTags.itemId, item.id)).run();
         if (tagIds.length) {
@@ -218,6 +220,18 @@ export const itemRoutes = new Hono<AppEnv>()
     });
     enqueueFetch(item.id, true);
     return c.body(null, 202);
+  })
+  // The saved reader copy of a link. Links saved before reader copies existed get one on first request.
+  .get('/items/:id/content', async (c) => {
+    const item = loadItem(c.var.user.id, c.req.param('id'), 'viewer');
+    const read = () => db.select().from(itemContent).where(eq(itemContent.itemId, item.id)).get();
+    let content = read();
+    if (!content && item.url && item.kind === 'link' && item.frameable === null) {
+      await fetchReaderCopy(item.id).catch(() => {});
+      content = read();
+    }
+    if (!content) throw new HttpError(404, 'There is no reader copy of this page');
+    return c.json({ html: content.html, byline: content.byline, words: content.words, fetchedAt: content.fetchedAt });
   })
   // Preview image, fetched by the server (SSRF-guarded) and cached on disk per item.
   .get('/items/:id/image', async (c) => {

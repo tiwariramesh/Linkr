@@ -16,6 +16,10 @@ export const useUploads = create<{ progress: Record<string, number>; previews: R
 
 const PARALLEL_UPLOADS = 3;
 
+// Settles when an upload started by uploadFiles finishes (with the saved item, or undefined if it failed).
+const finished = new Map<string, Promise<Item | undefined>>();
+export const whenUploaded = (id: string) => finished.get(id) ?? Promise.resolve(undefined);
+
 const kindFor = (mime: string): ItemKind =>
   mime.startsWith('image/')
     ? 'image'
@@ -45,7 +49,7 @@ function dropPreview(id: string) {
   });
 }
 
-async function uploadOne(file: File, item: Item) {
+async function uploadOne(file: File, item: Item): Promise<Item | undefined> {
   const params = new URLSearchParams({ spaceId: item.spaceId, id: item.id, name: file.name, position: item.position });
   if (item.folderId) params.set('folderId', item.folderId);
   const saved = await save(
@@ -61,14 +65,17 @@ async function uploadOne(file: File, item: Item) {
     }
   );
   setProgress(item.id, null);
-  if (!saved) return;
+  if (!saved) return undefined;
   useStore.setState((state) => ({ items: { ...state.items, [saved.id]: saved } }));
+  void addThumbnail(file, item.id);
+  return saved;
+}
+
+async function addThumbnail(file: File, itemId: string) {
   const thumbnail = await makeThumbnail(file);
   const stored =
-    thumbnail && (await save([item.id], () => api.put(`/items/${item.id}/thumbnail`, thumbnail).then(() => true)));
-  if (stored) {
-    dropPreview(item.id);
-  }
+    thumbnail && (await save([itemId], () => api.put(`/items/${itemId}/thumbnail`, thumbnail).then(() => true)));
+  if (stored) dropPreview(itemId);
 }
 
 // Each file becomes an item at the top of the folder (null = Inbox), in the order given.
@@ -109,6 +116,7 @@ export function uploadFiles(files: File[], folderId: string | null): string[] {
       url: '',
       description: '',
       notes: '',
+      body: null,
       image: '',
       favicon: '',
       siteName: '',
@@ -116,6 +124,7 @@ export function uploadFiles(files: File[], folderId: string | null): string[] {
       pinned: false,
       position: positions[index],
       fetchStatus: 'done',
+      frameable: null,
       file: { id: '', name: file.name, mime: file.type, size: file.size },
       tagIds: [],
       createdAt: now,
@@ -138,9 +147,22 @@ export function uploadFiles(files: File[], folderId: string | null): string[] {
     },
   }));
 
-  const pending = [...queue];
+  const pending = queue.map((entry) => {
+    let settle: (item: Item | undefined) => void = () => {};
+    finished.set(
+      entry.item.id,
+      new Promise((resolve) => {
+        settle = resolve;
+      })
+    );
+    return { ...entry, settle };
+  });
   const worker = async () => {
-    for (let next = pending.shift(); next; next = pending.shift()) await uploadOne(next.file, next.item);
+    for (let next = pending.shift(); next; next = pending.shift()) {
+      const saved = await uploadOne(next.file, next.item);
+      next.settle(saved);
+      finished.delete(next.item.id);
+    }
   };
   for (let i = 0; i < Math.min(PARALLEL_UPLOADS, pending.length); i++) void worker();
   return queue.map(({ item }) => item.id);

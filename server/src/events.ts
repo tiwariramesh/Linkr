@@ -9,7 +9,7 @@ export type Entity = 'space' | 'folder' | 'item' | 'tag';
 export type Change = { entity: Entity; id: string; op?: 'upsert' | 'delete' };
 export type SpaceEvent = { spaceId: string; seq: number };
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Listener = (event: SpaceEvent) => void;
 
 const listeners = new Map<string, Set<Listener>>();

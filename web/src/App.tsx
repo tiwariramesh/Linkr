@@ -8,6 +8,7 @@ import { LoginPage, RegisterPage } from '@/pages/AuthPages';
 import { loadAppInfo, loadSession, preferredSpaceId, useStore } from '@/store/store';
 
 const ArchivePage = lazy(() => import('@/pages/ArchivePage').then((m) => ({ default: m.ArchivePage })));
+const ItemPage = lazy(() => import('@/pages/ItemPage').then((m) => ({ default: m.ItemPage })));
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })));
 
 function Splash() {
@@ -56,6 +57,14 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <FolderPage /> },
           { path: 'f/:folderId', element: <FolderPage /> },
+          {
+            path: 'i/:itemId',
+            element: (
+              <Suspense>
+                <ItemPage />
+              </Suspense>
+            ),
+          },
           {
             path: 'archive',
             element: (

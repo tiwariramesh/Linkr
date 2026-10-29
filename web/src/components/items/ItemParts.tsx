@@ -5,6 +5,7 @@ import {
   FolderInput,
   Loader2,
   MoreHorizontal,
+  PanelsLeftRight,
   Pencil,
   Play,
   RefreshCw,
@@ -21,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { COLORS } from '@/lib/colors';
-import { fileExtension, fileUrl, KIND_ICON, openItem } from '@/lib/items';
+import { fileExtension, fileUrl, KIND_ICON, openInNewTab, openItem } from '@/lib/items';
 import type { Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { refetchItem, trashItems, useStore } from '@/store/store';
@@ -153,16 +154,16 @@ export function ItemMenu({ item, className }: { item: Item; className?: string }
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48" onClick={(event) => event.stopPropagation()}>
-        {item.url && (
-          <DropdownMenuItem onSelect={() => openItem(item)}>
-            <ExternalLink /> Open link
+        <DropdownMenuItem onSelect={() => openItem(item)}>
+          <PanelsLeftRight /> Open with notes
+        </DropdownMenuItem>
+        {(item.url || item.file?.id) && (
+          <DropdownMenuItem onSelect={() => openInNewTab(item)}>
+            <ExternalLink /> Open in new tab
           </DropdownMenuItem>
         )}
         {item.file?.id && (
           <>
-            <DropdownMenuItem onSelect={() => openItem(item)}>
-              <ExternalLink /> Open
-            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <a href={fileUrl(item.file, true)} download={item.file.name}>
                 <Download /> Download

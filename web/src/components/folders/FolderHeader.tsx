@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, MoreHorizontal, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, MoreHorizontal, NotebookPen, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -24,7 +24,7 @@ import { folderPath } from '@/lib/tree';
 import type { Folder } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { updateFolder, useStore } from '@/store/store';
-import { focusFolderTitle, useUi } from '@/store/ui';
+import { focusFolderTitle, showSessionNotes, useUi } from '@/store/ui';
 
 const menuParts = {
   Item: DropdownMenuItem,
@@ -258,6 +258,23 @@ function TitleInput({ folder }: { folder: Folder }) {
   );
 }
 
+function NotesToggle({ folder }: { folder: Folder }) {
+  const open = useUi((state) => state.sessionNotesOpen);
+  return (
+    <Button
+      variant={open ? 'secondary' : 'ghost'}
+      size="sm"
+      onClick={() => showSessionNotes(!open)}
+      aria-pressed={open}
+      title="Session notes"
+    >
+      <NotebookPen />
+      <span className="hidden sm:inline">Notes</span>
+      {folder.notes.trim() && !open && <span className="bg-primary size-1.5 rounded-full" aria-label="has notes" />}
+    </Button>
+  );
+}
+
 export function FolderHeader({ folder }: { folder: Folder }) {
   return (
     <div className="flex flex-col gap-2">
@@ -269,6 +286,7 @@ export function FolderHeader({ folder }: { folder: Folder }) {
           <TitleInput key={folder.title} folder={folder} />
           <SessionDetails folder={folder} />
         </div>
+        <NotesToggle folder={folder} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Folder options">

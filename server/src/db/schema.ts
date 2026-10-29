@@ -115,6 +115,9 @@ export const folders = sqliteTable(
     term: text('term'),
     // Display preferences: { layout: 'cards' | 'list', sort: 'manual' | 'newest' | 'oldest' | 'title' }
     view: text('view', { mode: 'json' }).$type<{ layout?: string; sort?: string }>(),
+    // Session notes: the rich document (editor JSON) and its plain text, for search and previews.
+    body: text('body'),
+    notes: text('notes').notNull().default(''),
     pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
     archivedAt: text('archived_at'),
     deletedAt: text('deleted_at'),
@@ -148,6 +151,8 @@ export const items = sqliteTable(
     siteName: text('site_name').notNull().default(''),
     // The uploaded file this item stands for (files, images, videos and PDFs added from a device).
     fileId: text('file_id'),
+    // Whether the page lets other sites show it in a frame (null = not checked yet).
+    frameable: integer('frameable', { mode: 'boolean' }),
     color: text('color'),
     pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
     position: text('position').notNull(),
@@ -166,6 +171,19 @@ export const items = sqliteTable(
     index('items_space_url_idx').on(t.spaceId, t.url),
   ]
 );
+
+// A readable copy of a link's main text, saved when the link is fetched. One row per item.
+export const itemContent = sqliteTable('item_content', {
+  itemId: text('item_id')
+    .primaryKey()
+    .references(() => items.id, { onDelete: 'cascade' }),
+  html: text('html').notNull(),
+  text: text('text').notNull(),
+  byline: text('byline'),
+  // Word count of the text.
+  words: integer('words').notNull(),
+  fetchedAt: text('fetched_at').notNull(),
+});
 
 // Uploaded files. The bytes live on disk at data/files/<itemId>/<fileId>.
 export const files = sqliteTable(

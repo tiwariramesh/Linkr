@@ -1,4 +1,4 @@
-import { Download, ExternalLink, X } from 'lucide-react';
+import { Download, ExternalLink, PanelsLeftRight, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { formatBytes, timeAgo } from '@/lib/format';
-import { fileUrl, KIND_ICON } from '@/lib/items';
+import { fileUrl, KIND_ICON, openItem } from '@/lib/items';
 import { folderPath, folderStatus } from '@/lib/tree';
 import type { Item } from '@/lib/types';
 import { createTag, updateItem, useStore } from '@/store/store';
@@ -185,16 +185,35 @@ function ItemForm({ item }: { item: Item }) {
           />
         </div>
       )}
-      <div className="grid gap-1.5">
-        <Label htmlFor="item-notes">{item.kind === 'note' ? 'Note' : 'Your notes'}</Label>
-        <Textarea
-          id="item-notes"
-          rows={item.kind === 'note' ? 8 : 4}
-          value={draft.notes}
-          onChange={(event) => set({ notes: event.target.value })}
-          placeholder={item.kind === 'note' ? '' : 'Why it matters, what to point out, questions to ask…'}
-        />
-      </div>
+      {item.body ? (
+        <div className="bg-muted/50 flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+          <span className="text-muted-foreground">
+            {item.kind === 'note' ? 'This note' : 'The notes'} are written in the notes editor.
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              editItem(null);
+              openItem(item);
+            }}
+          >
+            <PanelsLeftRight /> Open
+          </Button>
+        </div>
+      ) : (
+        <div className="grid gap-1.5">
+          <Label htmlFor="item-notes">{item.kind === 'note' ? 'Note' : 'Your notes'}</Label>
+          <Textarea
+            id="item-notes"
+            rows={item.kind === 'note' ? 8 : 4}
+            value={draft.notes}
+            onChange={(event) => set({ notes: event.target.value })}
+            placeholder={item.kind === 'note' ? '' : 'Why it matters, what to point out, questions to ask…'}
+          />
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label>Folder</Label>

@@ -24,6 +24,7 @@ import { Sidebar } from '@/components/shell/Sidebar';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { KIND_ICON } from '@/lib/items';
+import { setNavigator } from '@/lib/navigation';
 import { childFolders, isInside, itemsInFolder } from '@/lib/tree';
 import { moveItems, openSpace, updateFolder, updateItem, useStore } from '@/store/store';
 import { openPalette, setMobileNav, useUi } from '@/store/ui';
@@ -96,6 +97,8 @@ export function AppShell() {
   // Mounted on first use, then kept so it opens instantly.
   const [paletteUsed, setPaletteUsed] = useState(false);
   if (paletteOpen && !paletteUsed) setPaletteUsed(true);
+
+  useEffect(() => setNavigator(navigate), [navigate]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

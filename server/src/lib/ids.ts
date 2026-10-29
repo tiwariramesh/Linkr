@@ -12,3 +12,15 @@ export function newId(): string {
 }
 
 export const idSchema = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, 'Invalid ID');
+
+// A rich-text document from the editor, stored as its JSON text.
+export const documentSchema = z
+  .string()
+  .max(2_000_000, 'This note is too long')
+  .refine((value) => {
+    try {
+      return JSON.parse(value)?.type === 'doc';
+    } catch {
+      return false;
+    }
+  }, 'Not an editor document');

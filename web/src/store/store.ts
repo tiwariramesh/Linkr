@@ -248,6 +248,8 @@ export async function createFolder(input: { parentId: string | null; title: stri
     sessionDate: null,
     term: null,
     view: {},
+    body: null,
+    notes: '',
     pinned: false,
     archivedAt: null,
     deletedAt: null,
@@ -277,7 +279,10 @@ export async function createFolder(input: { parentId: string | null; title: stri
 }
 
 type FolderPatch = Partial<
-  Pick<Folder, 'title' | 'icon' | 'color' | 'parentId' | 'position' | 'sessionDate' | 'term' | 'view' | 'pinned'>
+  Pick<
+    Folder,
+    'title' | 'icon' | 'color' | 'parentId' | 'position' | 'sessionDate' | 'term' | 'view' | 'pinned' | 'body' | 'notes'
+  >
 > & { archived?: boolean };
 
 export async function updateFolder(id: string, patch: FolderPatch) {
@@ -352,6 +357,7 @@ export async function createItem(input: {
     url: input.url ?? '',
     description: '',
     notes,
+    body: null,
     image: '',
     favicon: '',
     siteName: input.kind === 'link' ? hostOf(input.url ?? '') : '',
@@ -359,6 +365,7 @@ export async function createItem(input: {
     pinned: false,
     position: generateKeyBetween(null, first?.position ?? null),
     fetchStatus: input.kind === 'link' ? 'pending' : 'done',
+    frameable: null,
     file: null,
     tagIds: [],
     createdAt: now,
@@ -384,7 +391,10 @@ export async function createItem(input: {
 }
 
 type ItemPatch = Partial<
-  Pick<Item, 'title' | 'url' | 'description' | 'notes' | 'color' | 'pinned' | 'folderId' | 'position' | 'tagIds'>
+  Pick<
+    Item,
+    'title' | 'url' | 'description' | 'notes' | 'body' | 'color' | 'pinned' | 'folderId' | 'position' | 'tagIds'
+  >
 >;
 
 export async function updateItem(id: string, patch: ItemPatch) {

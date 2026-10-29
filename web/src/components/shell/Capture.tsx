@@ -10,6 +10,8 @@ const isEditable = (target: EventTarget | null) =>
   target instanceof Element &&
   !!target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
 
+const inEditor = (target: EventTarget | null) => target instanceof Element && !!target.closest('.ProseMirror');
+
 // Something from outside the app: files from the desktop, or links and text from another window.
 const isOutsideDrag = (event: DragEvent) =>
   [...(event.dataTransfer?.types ?? [])].some((type) => ['Files', 'text/uri-list', 'text/plain'].includes(type));
@@ -94,6 +96,12 @@ export function Capture() {
     };
     const onDragOver = (event: DragEvent) => {
       if (internal || !isOutsideDrag(event)) return;
+      // The notes editor places dropped files where they land.
+      if (inEditor(event.target)) {
+        highlight(null);
+        setTarget(null);
+        return;
+      }
       // Let text boxes take dropped text as usual.
       if (isEditable(event.target) && !event.dataTransfer?.types.includes('Files')) return;
       event.preventDefault();
@@ -108,7 +116,7 @@ export function Capture() {
       if (depth <= 0) reset();
     };
     const onDrop = (event: DragEvent) => {
-      if (internal || !isOutsideDrag(event) || !event.dataTransfer) return;
+      if (internal || !isOutsideDrag(event) || !event.dataTransfer || inEditor(event.target)) return;
       if (isEditable(event.target) && !event.dataTransfer.types.includes('Files')) return reset();
       event.preventDefault();
       const folderId = folderFor(event);

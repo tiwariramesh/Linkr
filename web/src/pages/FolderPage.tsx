@@ -1,5 +1,5 @@
-import { ArchiveRestore, Inbox, LayoutGrid, List, Search, Undo2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ArchiveRestore, Inbox, LayoutGrid, List, Search, Undo2, X } from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { FolderHeader } from '@/components/folders/FolderHeader';
@@ -10,9 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { readInboxView, saveInboxView } from '@/lib/inbox-view';
 import { childFolders, folderStatus, itemCounts, itemsInFolder } from '@/lib/tree';
 import type { FolderView, Item, SortMode, Tag } from '@/lib/types';
 import { restoreFolder, setSelection, updateFolder, useStore } from '@/store/store';
+import { showSessionNotes, useUi } from '@/store/ui';
+
+// The editor is large; it loads the first time notes are opened.
+const SessionNotes = lazy(() => import('@/components/editor/Notes').then((m) => ({ default: m.SessionNotes })));
 
 const SORT_LABELS: Record<SortMode, string> = {
   manual: 'Custom order',
@@ -20,16 +25,6 @@ const SORT_LABELS: Record<SortMode, string> = {
   oldest: 'Oldest first',
   title: 'Title A–Z',
 };
-
-// The Inbox has no folder row to store its view settings in, so they live in this browser.
-const INBOX_VIEW_KEY = 'linkr-inbox-view';
-function readInboxView(): FolderView {
-  try {
-    return JSON.parse(localStorage.getItem(INBOX_VIEW_KEY) ?? '{}');
-  } catch {
-    return {};
-  }
-}
 
 function matches(item: Item, tags: Record<string, Tag>, query: string) {
   const q = query.toLowerCase();
@@ -58,6 +53,7 @@ function FolderContents() {
   const subfolders = useStore(useShallow((state) => childFolders(state.folders, folderId)));
   const allItems = useStore((state) => state.items);
   const tags = useStore((state) => state.tags);
+  const notesOpen = useUi((state) => state.sessionNotesOpen);
   const [inboxView, setInboxView] = useState(readInboxView);
   const [query, setQuery] = useState('');
 
@@ -89,11 +85,7 @@ function FolderContents() {
     } else {
       const next = { ...inboxView, ...patch };
       setInboxView(next);
-      try {
-        localStorage.setItem(INBOX_VIEW_KEY, JSON.stringify(next));
-      } catch {
-        // storage blocked
-      }
+      saveInboxView(next);
     }
   };
 
@@ -116,103 +108,122 @@ function FolderContents() {
   }
 
   const readOnly = status === 'trashed';
+  const showNotes = !!folder && notesOpen && !readOnly;
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 pb-24 sm:p-6">
-        {status === 'trashed' && folder && (
-          <div className="bg-destructive/10 text-destructive flex items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm">
-            This folder is in the Trash.
-            <Button size="sm" variant="outline" onClick={() => restoreFolder(folder.id)}>
-              <Undo2 /> Restore
-            </Button>
-          </div>
-        )}
-        {status === 'archived' && folder && (
-          <div className="bg-muted flex items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm">
-            This folder is archived. It stays searchable but out of the sidebar.
-            {folder.archivedAt && (
-              <Button size="sm" variant="outline" onClick={() => updateFolder(folder.id, { archived: false })}>
-                <ArchiveRestore /> Unarchive
+    <div className="flex min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 pb-24 sm:p-6">
+          {status === 'trashed' && folder && (
+            <div className="bg-destructive/10 text-destructive flex items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm">
+              This folder is in the Trash.
+              <Button size="sm" variant="outline" onClick={() => restoreFolder(folder.id)}>
+                <Undo2 /> Restore
               </Button>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+          {status === 'archived' && folder && (
+            <div className="bg-muted flex items-center justify-between gap-3 rounded-lg px-4 py-2 text-sm">
+              This folder is archived. It stays searchable but out of the sidebar.
+              {folder.archivedAt && (
+                <Button size="sm" variant="outline" onClick={() => updateFolder(folder.id, { archived: false })}>
+                  <ArchiveRestore /> Unarchive
+                </Button>
+              )}
+            </div>
+          )}
 
-        {folder ? (
-          <FolderHeader folder={folder} />
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className="bg-muted flex size-11 items-center justify-center rounded-xl">
-              <Inbox className="size-5" />
-            </span>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Inbox</h1>
-              <p className="text-muted-foreground text-sm">
-                Everything you save lands here first. Drag it into a folder when you’re ready.
-              </p>
+          {folder ? (
+            <FolderHeader folder={folder} />
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="bg-muted flex size-11 items-center justify-center rounded-xl">
+                <Inbox className="size-5" />
+              </span>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">Inbox</h1>
+                <p className="text-muted-foreground text-sm">
+                  Everything you save lands here first. Drag it into a folder when you’re ready.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {folder && !readOnly && (subfolders.length > 0 || items.length === 0) && (
+            <SubfolderTiles parent={folder} folders={subfolders} counts={counts} />
+          )}
+
+          {!readOnly && <QuickAdd folderId={folderId} />}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-40 flex-1 sm:max-w-xs">
+              <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search this folder"
+                className="pl-8"
+              />
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Select value={sort} onValueChange={(value) => changeView({ sort: value as SortMode })}>
+                <SelectTrigger size="sm" className="w-36" aria-label="Sort">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
+                    <SelectItem key={mode} value={mode}>
+                      {SORT_LABELS[mode]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                size="sm"
+                value={layout}
+                onValueChange={(value) => value && changeView({ layout: value as 'cards' | 'list' })}
+              >
+                <ToggleGroupItem value="cards" aria-label="Cards">
+                  <LayoutGrid />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="List">
+                  <List />
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
-        )}
 
-        {folder && !readOnly && (subfolders.length > 0 || items.length === 0) && (
-          <SubfolderTiles parent={folder} folders={subfolders} counts={counts} />
-        )}
-
-        {!readOnly && <QuickAdd folderId={folderId} />}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-40 flex-1 sm:max-w-xs">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search this folder"
-              className="pl-8"
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Select value={sort} onValueChange={(value) => changeView({ sort: value as SortMode })}>
-              <SelectTrigger size="sm" className="w-36" aria-label="Sort">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
-                  <SelectItem key={mode} value={mode}>
-                    {SORT_LABELS[mode]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <ToggleGroup
-              type="single"
-              variant="outline"
-              size="sm"
-              value={layout}
-              onValueChange={(value) => value && changeView({ layout: value as 'cards' | 'list' })}
-            >
-              <ToggleGroupItem value="cards" aria-label="Cards">
-                <LayoutGrid />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="list" aria-label="List">
-                <List />
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          {items.length > 0 ? (
+            <ItemsView items={items} layout={layout} reorderable={sort === 'manual' && !query.trim() && !readOnly} />
+          ) : (
+            <div className="text-muted-foreground rounded-xl border border-dashed p-10 text-center text-sm">
+              {query.trim()
+                ? 'Nothing matches your search.'
+                : folderId
+                  ? 'No items yet. Paste a link above, or drag items onto this folder in the sidebar.'
+                  : 'Your Inbox is empty. Paste a link above to save it.'}
+            </div>
+          )}
         </div>
-
-        {items.length > 0 ? (
-          <ItemsView items={items} layout={layout} reorderable={sort === 'manual' && !query.trim() && !readOnly} />
-        ) : (
-          <div className="text-muted-foreground rounded-xl border border-dashed p-10 text-center text-sm">
-            {query.trim()
-              ? 'Nothing matches your search.'
-              : folderId
-                ? 'No items yet. Paste a link above, or drag items onto this folder in the sidebar.'
-                : 'Your Inbox is empty. Paste a link above to save it.'}
-          </div>
-        )}
+        <SelectionBar />
       </div>
-      <SelectionBar />
+      {showNotes && (
+        // Beside the items on wide screens; over them on small ones.
+        <aside className="bg-background fixed inset-0 z-40 flex flex-col lg:static lg:z-auto lg:w-[420px] lg:shrink-0 lg:border-l">
+          <div className="flex items-center justify-between border-b py-1 pr-1 pl-4">
+            <p className="truncate text-sm font-medium">Session notes</p>
+            <Button variant="ghost" size="icon-sm" onClick={() => showSessionNotes(false)} aria-label="Close notes">
+              <X />
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1">
+            <Suspense>
+              <SessionNotes folder={folder} />
+            </Suspense>
+          </div>
+        </aside>
+      )}
     </div>
   );
 }

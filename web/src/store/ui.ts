@@ -10,7 +10,18 @@ type Ui = {
   // A just-created folder whose title should be focused for typing.
   focusTitleFolderId: string | null;
   paletteOpen: boolean;
+  // The session notes panel beside a folder's items (remembered per browser).
+  sessionNotesOpen: boolean;
 };
+
+const SESSION_NOTES_KEY = 'linkr-session-notes';
+function readSessionNotesOpen() {
+  try {
+    return localStorage.getItem(SESSION_NOTES_KEY) === 'open';
+  } catch {
+    return false;
+  }
+}
 
 export const useUi = create<Ui>(() => ({
   editingItemId: null,
@@ -20,6 +31,7 @@ export const useUi = create<Ui>(() => ({
   mobileNavOpen: false,
   focusTitleFolderId: null,
   paletteOpen: false,
+  sessionNotesOpen: readSessionNotesOpen(),
 }));
 
 export const editItem = (id: string | null) => useUi.setState({ editingItemId: id });
@@ -30,6 +42,14 @@ export const askMoveItems = (ids: string[] | null) => useUi.setState({ movingIte
 export const setMobileNav = (open: boolean) => useUi.setState({ mobileNavOpen: open });
 export const focusFolderTitle = (id: string | null) => useUi.setState({ focusTitleFolderId: id });
 export const openPalette = (open: boolean) => useUi.setState({ paletteOpen: open });
+export function showSessionNotes(open: boolean) {
+  useUi.setState({ sessionNotesOpen: open });
+  try {
+    localStorage.setItem(SESSION_NOTES_KEY, open ? 'open' : 'closed');
+  } catch {
+    // storage blocked
+  }
+}
 
 // Which folders are expanded in the sidebar, remembered per browser.
 const EXPANDED_KEY = 'linkr-expanded';

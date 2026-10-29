@@ -27,6 +27,9 @@ export type Folder = {
   sessionDate: string | null;
   term: string | null;
   view: FolderView;
+  // Session notes: editor JSON (null until first edited) and its plain text.
+  body: string | null;
+  notes: string;
   pinned: boolean;
   archivedAt: string | null;
   deletedAt: string | null;
@@ -48,6 +51,8 @@ export type Item = {
   url: string;
   description: string;
   notes: string;
+  // Rich notes as editor JSON; null until edited in the notes editor (then `notes` is its plain text).
+  body: string | null;
   image: string;
   favicon: string;
   siteName: string;
@@ -55,6 +60,8 @@ export type Item = {
   pinned: boolean;
   position: string;
   fetchStatus: 'pending' | 'done' | 'failed';
+  // Whether the page may be shown in a frame; null = not known yet.
+  frameable: boolean | null;
   file: FileInfo | null;
   tagIds: string[];
   createdAt: string;

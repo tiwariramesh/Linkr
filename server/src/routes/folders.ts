@@ -7,7 +7,7 @@ import { mutate } from '../events.ts';
 import { HttpError, parseInput, type AppEnv } from '../http.ts';
 import { assertFolderInSpace, loadFolder, requireRole } from '../lib/access.ts';
 import { folderWire } from '../lib/data.ts';
-import { idSchema, newId } from '../lib/ids.ts';
+import { documentSchema, idSchema, newId } from '../lib/ids.ts';
 import { clearItemStorage } from '../lib/files.ts';
 import { folderPositionAtEnd, isValidPosition } from '../lib/positions.ts';
 import { colorSchema } from './spaces.ts';
@@ -27,6 +27,8 @@ const folderFields = {
   sessionDate: dateSchema.nullable(),
   term: z.string().trim().max(80).nullable(),
   view: viewSchema,
+  body: documentSchema.nullable(),
+  notes: z.string().max(200_000),
   pinned: z.boolean(),
   archived: z.boolean(),
 };
