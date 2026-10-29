@@ -267,6 +267,8 @@ export async function createFolder(input: { parentId: string | null; title: stri
     spaceId,
     icon: null,
     color: null,
+    description: '',
+    cover: null,
     sessionDate: null,
     term: null,
     view: {},
@@ -304,7 +306,19 @@ export async function createFolder(input: { parentId: string | null; title: stri
 type FolderPatch = Partial<
   Pick<
     Folder,
-    'title' | 'icon' | 'color' | 'parentId' | 'position' | 'sessionDate' | 'term' | 'view' | 'pinned' | 'body' | 'notes'
+    | 'title'
+    | 'description'
+    | 'cover'
+    | 'icon'
+    | 'color'
+    | 'parentId'
+    | 'position'
+    | 'sessionDate'
+    | 'term'
+    | 'view'
+    | 'pinned'
+    | 'body'
+    | 'notes'
   >
 > & { archived?: boolean };
 
@@ -324,6 +338,22 @@ export async function updateFolder(id: string, patch: FolderPatch) {
     () => api.patch(`/folders/${id}`, patch),
     () => set((state) => ({ folders: { ...state.folders, [id]: before } }))
   );
+}
+
+const COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+
+// Uploads a photo as the folder's cover banner.
+export async function setFolderCover(id: string, file: File) {
+  if (!COVER_TYPES.includes(file.type)) {
+    toast.error('Covers can be JPEG, PNG, WebP, GIF or AVIF images');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error('Cover photos can be up to 10 MB');
+    return;
+  }
+  const folder = await save([id], () => api.put<Folder>(`/folders/${id}/cover`, file));
+  if (folder) set((state) => ({ folders: { ...state.folders, [id]: folder } }));
 }
 
 export async function trashFolder(id: string) {
@@ -385,6 +415,7 @@ export async function createItem(input: {
   kind: 'link' | 'note';
   url?: string;
   notes?: string;
+  title?: string;
   folderId: string | null;
 }) {
   const { spaceId, items } = get();
@@ -397,7 +428,9 @@ export async function createItem(input: {
     spaceId,
     folderId: input.folderId,
     kind: input.kind,
-    title: input.kind === 'link' ? hostOf(input.url ?? '') : notes.split('\n')[0].slice(0, 120) || 'Untitled note',
+    title:
+      input.title ??
+      (input.kind === 'link' ? hostOf(input.url ?? '') : notes.split('\n')[0].slice(0, 120) || 'Untitled note'),
     url: input.url ?? '',
     description: '',
     notes,
@@ -426,6 +459,7 @@ export async function createItem(input: {
         kind: item.kind,
         url: item.url,
         notes: item.notes,
+        ...(input.title ? { title: input.title } : {}),
         folderId: item.folderId,
         position: item.position,
       }),

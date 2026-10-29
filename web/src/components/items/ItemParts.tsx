@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { COLORS } from '@/lib/colors';
-import { fileExtension, fileUrl, KIND_ICON, openInNewTab, openItem } from '@/lib/items';
+import { fileExtension, fileUrl, KIND_ICON, notePreview, openInNewTab, openItem } from '@/lib/items';
 import type { Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { refetchItem, trashItems, useStore } from '@/store/store';
@@ -60,7 +60,9 @@ export function ItemThumb({ item, className }: { item: Item; className?: string 
           className
         )}
       >
-        <p className="line-clamp-5 whitespace-pre-line">{item.notes || item.title}</p>
+        <p className="line-clamp-5 whitespace-pre-line">
+          {notePreview(item) || <span className="italic opacity-60">Empty note</span>}
+        </p>
       </div>
     );
   }

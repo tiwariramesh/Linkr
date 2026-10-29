@@ -10,6 +10,7 @@ import { requireRole } from '../lib/access.ts';
 import { changesSince, spaceSnapshot, spaceWire, userSpaces } from '../lib/data.ts';
 import { idSchema, newId } from '../lib/ids.ts';
 import { searchSpace } from '../lib/search.ts';
+import { clearSpaceCovers } from '../lib/covers.ts';
 import { clearItemStorage } from '../lib/files.ts';
 
 const COLORS = ['gray', 'red', 'orange', 'amber', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink'] as const;
@@ -75,6 +76,7 @@ export const spaceRoutes = new Hono<AppEnv>()
       .map((row) => row.id);
     db.delete(spaces).where(eq(spaces.id, spaceId)).run();
     clearItemStorage(itemIds);
+    clearSpaceCovers([spaceId]);
     return c.body(null, 204);
   })
   .get('/spaces/:id/snapshot', (c) => {

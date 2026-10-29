@@ -107,6 +107,10 @@ export const folders = sqliteTable(
       .references(() => spaces.id, { onDelete: 'cascade' }),
     parentId: text('parent_id').references((): AnySQLiteColumn => folders.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
+    // A short line under the title: what the folder or session is about.
+    description: text('description').notNull().default(''),
+    // Banner image: 'gradient:<name>' (built in) or 'upload:<token>' (stored in data/covers).
+    cover: text('cover'),
     icon: text('icon'),
     color: text('color'),
     position: text('position').notNull(),

@@ -1,4 +1,15 @@
-import { BookOpen, ChevronLeft, ChevronRight, ExternalLink, Globe, History, Presentation, X } from 'lucide-react';
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Globe,
+  History,
+  PanelRightClose,
+  PanelRightOpen,
+  Presentation,
+  X,
+} from 'lucide-react';
 import {
   useEffect,
   useMemo,
@@ -26,8 +37,8 @@ import { folderPath, itemsInFolder } from '@/lib/tree';
 import { sameLinkElsewhere } from '@/lib/urls';
 import type { Folder, Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useStore } from '@/store/store';
-import { focusHighlight, useUi } from '@/store/ui';
+import { updateItem, useStore } from '@/store/store';
+import { focusHighlight, focusItemTitle, showItemNotes, useUi } from '@/store/ui';
 
 const SPLIT_KEY = 'linkr-split';
 const clampSplit = (value: number) => Math.min(0.75, Math.max(0.3, value));
@@ -94,12 +105,12 @@ function Divider({ split, onChange }: { split: number; onChange: (split: number,
 }
 
 function NotesPane({ item, folder }: { item: Item; folder: Folder | undefined }) {
-  // A note's own text is in the left pane, so here it's the session notes.
+  // Beside a link or file: its notes, its highlights (pages only) and the folder's session notes.
   const highlightCount = useStore(
     (s) => Object.values(s.highlights).filter((highlight) => highlight.itemId === item.id).length
   );
   const tabs = [
-    ...(item.kind !== 'note' ? [{ id: 'item', label: 'Notes' }] : []),
+    { id: 'item', label: 'Notes' },
     // Highlights are made in a page's reader copy.
     ...(item.kind === 'link'
       ? [{ id: 'highlights', label: `Highlights${highlightCount ? ` ${highlightCount}` : ''}` }]
@@ -195,6 +206,74 @@ function UsedIn({ item }: { item: Item }) {
   );
 }
 
+// A note's title, edited in place like a document title. Enter moves on to the text.
+function NoteTitle({ item }: { item: Item }) {
+  const [value, setValue] = useState(item.title);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const focusId = useUi((s) => s.focusTitleItemId);
+  const fit = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useEffect(fit, []);
+  useEffect(() => {
+    if (focusId !== item.id) return;
+    ref.current?.focus();
+    ref.current?.select();
+    focusItemTitle(null);
+  }, [focusId, item.id]);
+  const commit = () => {
+    const title = value.trim();
+    if (!title) setValue(item.title);
+    else if (title !== item.title) void updateItem(item.id, { title });
+  };
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      maxLength={1000}
+      onChange={(event) => {
+        setValue(event.target.value.replace(/\s*\n\s*/g, ' '));
+        fit();
+      }}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commit();
+          // On to the note itself.
+          (
+            event.currentTarget
+              .closest('[data-note-page]')
+              ?.querySelector('[contenteditable="true"]') as HTMLElement | null
+          )?.focus();
+        }
+        if (event.key === 'Escape') setValue(item.title);
+      }}
+      aria-label="Note title"
+      placeholder="Untitled"
+      className="placeholder:text-muted-foreground/50 block w-full resize-none overflow-hidden bg-transparent text-3xl leading-tight font-bold tracking-tight outline-none sm:text-4xl"
+    />
+  );
+}
+
+// A note opened on its own: title, then the text, in a reading-width column.
+function NotePage({ item }: { item: Item }) {
+  return (
+    <div className="h-full overflow-y-auto" data-note-page>
+      <div className="mx-auto flex w-full max-w-3xl flex-col px-4 pt-10 pb-4 sm:px-8">
+        <div className="px-3 sm:px-[54px]">
+          <NoteTitle key={item.title} item={item} />
+        </div>
+        <ItemNotes item={item} className="min-h-[60svh]" />
+      </div>
+    </div>
+  );
+}
+
 export function ItemPage() {
   const { itemId } = useParams();
   return <ItemView key={itemId} />;
@@ -210,6 +289,7 @@ function ItemView() {
   const [mode, setMode] = useState<LinkMode>(() => (item ? defaultMode(item) : 'reader'));
   const [split, setSplit] = useState(readSplit);
   const [mobilePane, setMobilePane] = useState<'preview' | 'notes'>('preview');
+  const notesOpen = useUi((s) => s.itemNotesOpen);
   const [searchParams] = useSearchParams();
   const focusId = useUi((s) => s.focusHighlightId);
 
@@ -284,7 +364,8 @@ function ItemView() {
 
   const isNote = item.kind === 'note';
   const hasModes = item.kind === 'link' && !videoEmbedUrl(item.url);
-  const hasNotesPane = !isNote || !!folder;
+  // A note is its own page; links and files can show their notes beside them.
+  const hasNotesPane = !isNote && notesOpen;
   const changeSplit = (value: number, done: boolean) => {
     setSplit(value);
     if (done) {
@@ -296,7 +377,7 @@ function ItemView() {
     }
   };
 
-  const main = isNote ? <ItemNotes item={item} /> : <Preview item={item} mode={mode} onModeChange={setMode} />;
+  const main = isNote ? <NotePage item={item} /> : <Preview item={item} mode={mode} onModeChange={setMode} />;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -356,6 +437,18 @@ function ItemView() {
           </ToggleGroup>
         )}
         <UsedIn item={item} />
+        {!isNote && (
+          <Button
+            variant={notesOpen ? 'secondary' : 'ghost'}
+            size="icon"
+            onClick={() => showItemNotes(!notesOpen)}
+            aria-pressed={notesOpen}
+            aria-label={notesOpen ? 'Hide notes' : 'Show notes'}
+            title={notesOpen ? 'Hide notes' : 'Show notes'}
+          >
+            {notesOpen ? <PanelRightClose /> : <PanelRightOpen />}
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -396,7 +489,7 @@ function ItemView() {
                 mobilePane === pane ? 'bg-muted text-foreground' : 'text-muted-foreground'
               )}
             >
-              {pane === 'preview' ? (isNote ? 'Note' : 'Preview') : isNote ? 'Session notes' : 'Notes'}
+              {pane === 'preview' ? 'Preview' : 'Notes'}
             </button>
           ))}
         </div>

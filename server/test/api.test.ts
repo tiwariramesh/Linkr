@@ -454,6 +454,46 @@ describe('Linkr API', () => {
     assert.equal(final.folders.find((f: { id: string }) => f.id === copy.id).copiedFrom, null);
   });
 
+  test('folders take a description and a cover photo, which go when replaced or deleted', async () => {
+    const { call, send, spaceId } = await signUp('decorator');
+    const outsider = await signUp('passerby');
+    const folder = (await call('POST', '/api/folders', { spaceId, title: 'Week 6' })).body;
+    const described = await call('PATCH', `/api/folders/${folder.id}`, {
+      description: 'Feedback that moves learning forward',
+      cover: 'gradient:sunset',
+    });
+    assert.deepEqual(
+      [described.body.description, described.body.cover],
+      ['Feedback that moves learning forward', 'gradient:sunset']
+    );
+    assert.equal((await call('PATCH', `/api/folders/${folder.id}`, { cover: 'upload:sneaky' })).status, 422);
+    const hits = (await call('GET', `/api/spaces/${spaceId}/search?q=feedback`)).body.hits;
+    assert.deepEqual(
+      hits.map((h: { id: string }) => h.id),
+      [folder.id],
+      'descriptions are searchable'
+    );
+
+    const photo = Buffer.from('not really a png, but typed as one');
+    assert.equal((await send('PUT', `/api/folders/${folder.id}/cover`, photo, 'image/svg+xml')).status, 415);
+    const uploaded = await send('PUT', `/api/folders/${folder.id}/cover`, photo, 'image/png');
+    assert.equal(uploaded.status, 200);
+    assert.match(uploaded.body.cover, /^upload:/);
+    const served = await send('GET', `/api/folders/${folder.id}/cover`);
+    assert.equal(served.headers.get('content-type'), 'image/png');
+    assert.ok(served.bytes.equals(photo));
+    assert.equal((await outsider.send('GET', `/api/folders/${folder.id}/cover`)).status, 404);
+
+    const dir = path.join(dataDir, 'covers', spaceId, folder.id);
+    assert.ok(fs.existsSync(dir));
+    await call('PATCH', `/api/folders/${folder.id}`, { cover: null });
+    assert.ok(!fs.existsSync(dir), 'removing the cover deletes the photo');
+    await send('PUT', `/api/folders/${folder.id}/cover`, photo, 'image/png');
+    await call('POST', `/api/folders/${folder.id}/trash`);
+    await call('DELETE', `/api/folders/${folder.id}`);
+    assert.ok(!fs.existsSync(dir), 'deleting the folder deletes its photo');
+  });
+
   test('deleting an account removes its Personal space and everything in it', async () => {
     const { call, spaceId } = await signUp('leaver');
     await call('POST', '/api/items', { spaceId, kind: 'note', notes: 'bye' });

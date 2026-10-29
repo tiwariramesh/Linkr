@@ -4,7 +4,7 @@ import { Check, Highlighter } from 'lucide-react';
 import { useMemo, type MouseEvent } from 'react';
 import type { DragData } from '@/components/dnd/dnd';
 import { Favicon, ItemMenu, ItemThumb, TagChips } from '@/components/items/ItemParts';
-import { itemSubtitle, openItem } from '@/lib/items';
+import { itemSubtitle, notePreview, openItem } from '@/lib/items';
 import { timeAgo } from '@/lib/format';
 import type { Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -91,7 +91,7 @@ function SortableItem({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{item.title}</p>
           <p className="text-muted-foreground truncate text-xs">
-            {item.kind === 'note' ? item.notes.split('\n').slice(1).join(' ') || 'Note' : subtitle}
+            {item.kind === 'note' ? notePreview(item).replace(/\s+/g, ' ') || 'Note' : subtitle}
           </p>
         </div>
         <div className="hidden sm:block">
@@ -121,10 +121,7 @@ function SortableItem({
     >
       <ItemThumb item={item} className="aspect-[16/9]" />
       <div className="flex flex-1 flex-col gap-1.5 p-3">
-        {item.kind !== 'note' && <p className="line-clamp-2 text-sm leading-snug font-medium">{item.title}</p>}
-        {item.kind === 'note' && item.notes.includes('\n') && (
-          <p className="truncate text-sm font-medium">{item.title}</p>
-        )}
+        <p className="line-clamp-2 text-sm leading-snug font-medium">{item.title}</p>
         <TagChips item={item} />
         <div className="text-muted-foreground mt-auto flex items-center gap-1.5 pt-1 text-xs">
           <Favicon item={item} className="size-3.5" />

@@ -7,6 +7,7 @@ import { db, nowIso } from '../db/client.ts';
 import { files, folders, highlights, itemContent, items, itemTags } from '../db/schema.ts';
 import { mutate, type Tx } from '../events.ts';
 import { HttpError } from '../http.ts';
+import { copyCover } from './covers.ts';
 import { clearItemStorage, filePath } from './files.ts';
 import { newId } from './ids.ts';
 import { enqueueFetch } from './link-queue.ts';
@@ -121,6 +122,8 @@ export function runAgain(sourceId: string, actorId: string, options: RunAgainOpt
             spaceId,
             parentId: isRoot ? parentId : folderIds.get(folder.parentId!)!,
             title: isRoot ? options.title : folder.title,
+            description: folder.description,
+            cover: folder.cover,
             icon: folder.icon,
             color: folder.color,
             position,
@@ -200,6 +203,10 @@ export function runAgain(sourceId: string, actorId: string, options: RunAgainOpt
   } catch (error) {
     clearItemStorage(newItemIds);
     throw error;
+  }
+
+  for (const folder of tree) {
+    if (folder.cover?.startsWith('upload:')) copyCover(spaceId, folder.id, folderIds.get(folder.id)!);
   }
 
   // Links whose preview was still loading in the original get their own fetch.

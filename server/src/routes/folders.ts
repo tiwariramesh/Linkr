@@ -1,5 +1,6 @@
 import { eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { z } from 'zod';
 import { db, nowIso } from '../db/client.ts';
 import { folders, items } from '../db/schema.ts';
@@ -8,10 +9,18 @@ import { HttpError, parseInput, type AppEnv } from '../http.ts';
 import { assertFolderInSpace, loadFolder, requireRole } from '../lib/access.ts';
 import { folderWire } from '../lib/data.ts';
 import { documentSchema, idSchema, newId } from '../lib/ids.ts';
+import { clearCovers, COVER_TYPES, readCover, saveCover } from '../lib/covers.ts';
 import { clearItemStorage } from '../lib/files.ts';
 import { runAgain } from '../lib/duplicate.ts';
 import { folderPositionAtEnd, isValidPosition } from '../lib/positions.ts';
 import { colorSchema } from './spaces.ts';
+
+const coverLimit = bodyLimit({
+  maxSize: 10 * 1024 * 1024,
+  onError: () => {
+    throw new HttpError(413, 'Cover photos can be up to 10 MB');
+  },
+});
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
 const viewSchema = z.object({
@@ -21,6 +30,12 @@ const viewSchema = z.object({
 
 const folderFields = {
   title: z.string().trim().min(1, 'Title is required').max(200),
+  description: z.string().trim().max(2000),
+  // Built-in gradients only; uploaded covers go through PUT /folders/:id/cover.
+  cover: z
+    .string()
+    .regex(/^gradient:[a-z0-9-]{1,30}$/, 'Unknown cover')
+    .nullable(),
   icon: z.string().max(16).nullable(),
   color: colorSchema.nullable(),
   parentId: idSchema.nullable(),
@@ -105,6 +120,7 @@ export const folderRoutes = new Hono<AppEnv>()
       throw new HttpError(422, 'Invalid position');
     }
     const { archived, view, ...fields } = input;
+    const dropUpload = input.cover !== undefined && folder.cover?.startsWith('upload:');
     mutate(folder.spaceId, userId, (tx, touch) => {
       tx.update(folders)
         .set({
@@ -117,7 +133,36 @@ export const folderRoutes = new Hono<AppEnv>()
         .run();
       touch({ entity: 'folder', id: folder.id });
     });
+    if (dropUpload) clearCovers(folder.spaceId, [folder.id]);
     return c.json(folderWire(db.select().from(folders).where(eq(folders.id, folder.id)).get()!));
+  })
+  // A cover photo: the raw image as the request body.
+  .put('/folders/:id/cover', coverLimit, async (c) => {
+    const folder = loadFolder(c.var.user.id, c.req.param('id'), 'editor');
+    const mime = (c.req.header('content-type') ?? '').split(';')[0].trim().toLowerCase();
+    if (!COVER_TYPES[mime]) throw new HttpError(415, 'Covers can be JPEG, PNG, WebP, GIF or AVIF images');
+    const contents = Buffer.from(await c.req.arrayBuffer());
+    if (contents.length === 0) throw new HttpError(422, 'The image is empty');
+    const token = saveCover(folder.spaceId, folder.id, contents, mime);
+    mutate(folder.spaceId, c.var.user.id, (tx, touch) => {
+      tx.update(folders)
+        .set({ cover: `upload:${token}`, updatedAt: nowIso() })
+        .where(eq(folders.id, folder.id))
+        .run();
+      touch({ entity: 'folder', id: folder.id });
+    });
+    return c.json(folderWire(db.select().from(folders).where(eq(folders.id, folder.id)).get()!));
+  })
+  .get('/folders/:id/cover', (c) => {
+    const folder = loadFolder(c.var.user.id, c.req.param('id'), 'viewer');
+    const token = folder.cover?.startsWith('upload:') ? folder.cover.slice('upload:'.length) : null;
+    const image = token ? readCover(folder.spaceId, folder.id, token) : null;
+    if (!image) throw new HttpError(404, 'This folder has no cover photo');
+    c.header('content-type', image.mime);
+    // The address carries the token (?v=), so a new upload is a new address.
+    c.header('cache-control', 'private, max-age=31536000, immutable');
+    c.header('x-content-type-options', 'nosniff');
+    return c.body(new Uint8Array(image.contents));
   })
   // "Run again": a copy of the session (optionally with its subfolders) for a new date or term.
   .post('/folders/:id/run-again', async (c) => {
@@ -179,4 +224,5 @@ export function purgeFolders(spaceId: string, actorId: string | null, folderIds:
     for (const id of itemIds) touch({ entity: 'item', id, op: 'delete' });
   });
   clearItemStorage(itemIds);
+  clearCovers(spaceId, allFolderIds);
 }

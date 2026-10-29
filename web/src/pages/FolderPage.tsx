@@ -1,13 +1,18 @@
-import { ArchiveRestore, Inbox, LayoutGrid, List, Search, Undo2, X } from 'lucide-react';
+import { ArchiveRestore, Inbox, LayoutGrid, List, Undo2, X } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { FolderHeader } from '@/components/folders/FolderHeader';
 import { FolderHighlights } from '@/components/highlights/HighlightList';
-import { QuickAdd, SelectionBar, SubfolderTiles } from '@/components/folders/FolderPageParts';
+import {
+  FolderSearch,
+  NewNoteButton,
+  QuickAdd,
+  SelectionBar,
+  SubfolderTiles,
+} from '@/components/folders/FolderPageParts';
 import { ItemsView } from '@/components/items/ItemsView';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -65,10 +70,12 @@ function FolderContents() {
   const sort = view.sort ?? 'manual';
 
   const counts = useMemo(() => itemCounts(allItems), [allItems]);
-  const items = useMemo(() => {
-    const list = itemsInFolder(allItems, folderId, sort);
-    return query.trim() ? list.filter((item) => matches(item, tags, query.trim())) : list;
-  }, [allItems, folderId, sort, query, tags]);
+  const inFolder = useMemo(() => itemsInFolder(allItems, folderId, sort), [allItems, folderId, sort]);
+  const items = useMemo(
+    () => (query.trim() ? inFolder.filter((item) => matches(item, tags, query.trim())) : inFolder),
+    [inFolder, query, tags]
+  );
+  const total = inFolder.length;
 
   // Selection belongs to the folder on screen; Escape clears it.
   useEffect(() => {
@@ -157,17 +164,13 @@ function FolderContents() {
 
           {!readOnly && <QuickAdd folderId={folderId} />}
 
+          {/* The items' own toolbar: what's here, then find, sort, view and add. */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-40 flex-1 sm:max-w-xs">
-              <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search this folder"
-                className="pl-8"
-              />
-            </div>
-            <div className="ml-auto flex items-center gap-2">
+            <h2 className="text-sm font-semibold">
+              Items <span className="text-muted-foreground font-normal tabular-nums">{total}</span>
+            </h2>
+            <div className="ml-auto flex items-center gap-1.5">
+              <FolderSearch value={query} onChange={setQuery} />
               <Select value={sort} onValueChange={(value) => changeView({ sort: value as SortMode })}>
                 <SelectTrigger size="sm" className="w-36" aria-label="Sort">
                   <SelectValue />
@@ -194,6 +197,7 @@ function FolderContents() {
                   <List />
                 </ToggleGroupItem>
               </ToggleGroup>
+              {!readOnly && <NewNoteButton folderId={folderId} />}
             </div>
           </div>
 

@@ -13,13 +13,15 @@ export function newId(): string {
 
 export const idSchema = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, 'Invalid ID');
 
-// A rich-text document from the editor, stored as its JSON text.
+// A rich-text document from the notes editor, stored as its JSON text: { type: 'blocks', blocks } from the
+// block editor, or { type: 'doc', ... } from the editor notes were written in before it.
 export const documentSchema = z
   .string()
   .max(2_000_000, 'This note is too long')
   .refine((value) => {
     try {
-      return JSON.parse(value)?.type === 'doc';
+      const type = JSON.parse(value)?.type;
+      return type === 'blocks' || type === 'doc';
     } catch {
       return false;
     }

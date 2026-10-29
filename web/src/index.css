@@ -3,6 +3,8 @@
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
 @plugin '@tailwindcss/typography';
+/* BlockNote's shadcn UI ships Tailwind classes; generate them too. */
+@source '../../node_modules/@blocknote/shadcn';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -130,49 +132,42 @@
   }
 }
 
-/* Notes editor */
-.tiptap p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-  color: var(--muted-foreground);
+/* Notes editor (BlockNote): the app's font (menus included), a transparent background, and headings
+   scaled to sit below a note's own title rather than above it. */
+/* "html" outranks BlockNote's own .bn-root rules, whose stylesheet loads after this one. */
+html .bn-root,
+html .bn-root[data-color-scheme] {
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-editor-background: transparent;
 }
-.tiptap ul[data-type='taskList'] {
-  list-style: none;
-  padding-left: 0.25rem;
+html .bn-root,
+html .bn-root .bn-editor,
+html .bn-root .bn-default-styles {
+  font-family: 'Geist Variable', sans-serif;
 }
-.tiptap ul[data-type='taskList'] li {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
+.bn-container [data-content-type='heading'] {
+  --level: 1.75em;
 }
-.tiptap ul[data-type='taskList'] li > label {
-  margin-top: 0.2em;
-  user-select: none;
+.bn-container [data-content-type='heading'][data-level='2'] {
+  --level: 1.4em;
 }
-.tiptap ul[data-type='taskList'] li > div {
-  flex: 1;
+.bn-container [data-content-type='heading'][data-level='3'] {
+  --level: 1.15em;
 }
-.tiptap ul[data-type='taskList'] li > div > p {
-  margin: 0;
+/* Phones have no drag handle gutter to leave room for. */
+@media (max-width: 639px) {
+  .bn-container .bn-editor {
+    padding-inline: 12px;
+  }
 }
-.tiptap ul[data-type='taskList'] li[data-checked='true'] > div {
-  color: var(--muted-foreground);
-  text-decoration: line-through;
+/* Read-only notes in presenter mode */
+.bn-large .bn-editor {
+  font-size: 1.5rem;
+  padding-inline: 0;
 }
-.tiptap div[data-youtube-video] iframe {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 9;
-  border-radius: 0.5rem;
-}
-.tiptap img {
-  border-radius: 0.5rem;
-}
-.tiptap .ProseMirror-selectednode {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+.bn-compact .bn-editor {
+  font-size: 0.875rem;
+  padding-inline: 0;
 }
 
 /* Highlights in reader copies (colours match HIGHLIGHT_COLORS) and in notes */

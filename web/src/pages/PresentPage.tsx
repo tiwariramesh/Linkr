@@ -1,7 +1,7 @@
 import { BookOpen, ChevronLeft, ChevronRight, Globe, Maximize, Minimize, NotebookText, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { RichView } from '@/components/editor/RichEditor';
+import { BlockView } from '@/components/editor/BlockEditor';
 import { Favicon } from '@/components/items/ItemParts';
 import { defaultMode, Preview, type LinkMode } from '@/components/preview/Preview';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ function Slide({ item, mode, onModeChange }: { item: Item; mode: LinkMode; onMod
     return (
       <div className="h-full overflow-y-auto">
         <div className="mx-auto max-w-4xl px-10 py-16">
-          <RichView body={item.body} fallbackText={item.notes} className="prose-xl lg:prose-2xl" />
+          <BlockView body={item.body} fallbackText={item.notes} className="bn-large" />
         </div>
       </div>
     );
@@ -240,7 +240,7 @@ export function PresentPage() {
               <section className="mb-6">
                 <h2 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">This item</h2>
                 {item.notes.trim() ? (
-                  <RichView body={item.body} fallbackText={item.notes} className="prose-sm" />
+                  <BlockView body={item.body} fallbackText={item.notes} className="bn-compact" />
                 ) : (
                   <p className="text-muted-foreground text-sm">No notes on this item.</p>
                 )}
@@ -252,7 +252,7 @@ export function PresentPage() {
                   Session notes
                 </h2>
                 {folder.notes.trim() ? (
-                  <RichView body={folder.body} fallbackText={folder.notes} className="prose-sm" />
+                  <BlockView body={folder.body} fallbackText={folder.notes} className="bn-compact" />
                 ) : (
                   <p className="text-muted-foreground text-sm">No session notes.</p>
                 )}

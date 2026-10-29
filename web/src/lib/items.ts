@@ -18,6 +18,14 @@ export const fileExtension = (name: string) => /\.([a-z0-9]{1,8})$/i.exec(name)?
 // Uploads show in the browser where it can; ?download always saves.
 export const fileUrl = (file: FileInfo, download = false) => `/api/files/${file.id}${download ? '?download' : ''}`;
 
+// A note's text for previews, without its first line when that is just the title again
+// (notes saved before notes had their own titles).
+export function notePreview(item: Item): string {
+  const text = item.notes.trim();
+  const [first, ...rest] = text.split('\n');
+  return first.trim() === item.title.trim() ? rest.join('\n').trim() : text;
+}
+
 // The small grey line under a card's title.
 export function itemSubtitle(item: Item): string {
   if (item.kind === 'note') return 'Note';

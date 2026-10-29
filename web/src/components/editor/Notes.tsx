@@ -1,13 +1,11 @@
-import { RichEditor } from '@/components/editor/RichEditor';
+import { BlockEditor } from '@/components/editor/BlockEditor';
 import type { Folder, Item } from '@/lib/types';
 import { updateFolder, updateItem } from '@/store/store';
-
-const firstLine = (text: string) => text.trim().split('\n')[0].slice(0, 120);
 
 // A folder's session notes: the plan, talking points, what happened.
 export function SessionNotes({ folder }: { folder: Folder }) {
   return (
-    <RichEditor
+    <BlockEditor
       key={folder.id}
       body={folder.body}
       fallbackText={folder.notes}
@@ -19,26 +17,17 @@ export function SessionNotes({ folder }: { folder: Folder }) {
   );
 }
 
-// An item's own notes. For a note item this is the note itself, and its title follows the first line
-// until the title is changed by hand.
-export function ItemNotes({ item }: { item: Item }) {
-  const isNote = item.kind === 'note';
+// An item's notes. For a note item this is the note itself (its title is edited separately).
+export function ItemNotes({ item, className = 'h-full' }: { item: Item; className?: string }) {
   return (
-    <RichEditor
+    <BlockEditor
       key={item.id}
       body={item.body}
       fallbackText={item.notes}
-      placeholder={isNote ? 'Write your note…' : 'Why it matters, what to point out, questions to ask…'}
+      placeholder={item.kind === 'note' ? 'Start writing…' : 'Why it matters, what to point out, questions to ask…'}
       folderId={item.folderId}
-      onSave={({ body, text }) => {
-        const autoTitle = isNote && (item.title === firstLine(item.notes) || item.title === 'Untitled note');
-        void updateItem(item.id, {
-          body,
-          notes: text,
-          ...(autoTitle ? { title: firstLine(text) || 'Untitled note' } : {}),
-        });
-      }}
-      className="h-full"
+      onSave={({ body, text }) => void updateItem(item.id, { body, notes: text })}
+      className={className}
     />
   );
 }

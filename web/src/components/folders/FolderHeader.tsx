@@ -1,5 +1,16 @@
-import { CalendarDays, ChevronRight, History, MoreHorizontal, NotebookPen, Presentation, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+  AlignLeft,
+  CalendarDays,
+  ChevronRight,
+  History,
+  Image as ImageIcon,
+  ImagePlus,
+  MoreHorizontal,
+  NotebookPen,
+  Presentation,
+  X,
+} from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { FolderGlyph } from '@/components/folders/FolderGlyph';
@@ -19,12 +30,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { COLOR_NAMES, COLORS, FOLDER_ICONS } from '@/lib/colors';
+import { COVER_GRADIENTS, coverBackground } from '@/lib/covers';
 import { formatSessionDate } from '@/lib/format';
 import { startPresenting } from '@/lib/present';
 import { folderPath } from '@/lib/tree';
 import type { Folder } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { updateFolder, useStore } from '@/store/store';
+import { setFolderCover, updateFolder, useStore } from '@/store/store';
 import { focusFolderTitle, showSessionNotes, useUi } from '@/store/ui';
 
 const menuParts = {
@@ -56,7 +68,7 @@ function Breadcrumbs({ folder }: { folder: Folder }) {
 }
 
 // Click the folder's icon to change its emoji or colour.
-function AppearancePicker({ folder }: { folder: Folder }) {
+function AppearancePicker({ folder, raised }: { folder: Folder; raised?: boolean }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -64,11 +76,12 @@ function AppearancePicker({ folder }: { folder: Folder }) {
           type="button"
           aria-label="Change icon and colour"
           className={cn(
-            'hover:bg-muted flex size-11 shrink-0 items-center justify-center rounded-xl transition',
-            folder.color && COLORS[folder.color].soft
+            'hover:bg-muted flex size-14 shrink-0 items-center justify-center rounded-xl transition',
+            folder.color && COLORS[folder.color].soft,
+            raised && 'bg-background ring-background shadow-sm ring-4'
           )}
         >
-          <FolderGlyph folder={folder} className="size-6 text-2xl" />
+          <FolderGlyph folder={folder} className="size-8 text-4xl" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72">
@@ -253,7 +266,7 @@ function TitleInput({ folder }: { folder: Folder }) {
         }
       }}
       aria-label="Folder title"
-      className="placeholder:text-muted-foreground block w-full min-w-0 resize-none overflow-hidden rounded-md bg-transparent text-2xl leading-tight font-semibold tracking-tight outline-none focus:ring-0"
+      className="placeholder:text-muted-foreground block w-full min-w-0 resize-none overflow-hidden rounded-md bg-transparent text-3xl leading-tight font-bold tracking-tight sm:text-4xl outline-none focus:ring-0"
       placeholder="Untitled folder"
     />
   );
@@ -318,38 +331,194 @@ function NotesToggle({ folder }: { folder: Folder }) {
   );
 }
 
-export function FolderHeader({ folder }: { folder: Folder }) {
+// Pick a built-in gradient or upload a photo for the folder's banner.
+function CoverPicker({ folder, children }: { folder: Folder; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const upload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/gif,image/avif';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setUploading(true);
+      await setFolderCover(folder.id, file);
+      setUploading(false);
+      setOpen(false);
+    };
+    input.click();
+  };
   return (
-    <div className="flex flex-col gap-2">
-      <Breadcrumbs folder={folder} />
-      <div className="flex items-center gap-3">
-        <AppearancePicker folder={folder} />
-        <div className="min-w-0 flex-1">
-          {/* Remounts when the saved title changes (e.g. renamed on another device). */}
-          <TitleInput key={folder.title} folder={folder} />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverContent align="end" className="w-80">
+        <p className="text-muted-foreground mb-2 text-xs font-medium">Gradients</p>
+        <div className="grid grid-cols-5 gap-2">
+          {Object.entries(COVER_GRADIENTS).map(([name, background]) => (
+            <button
+              key={name}
+              type="button"
+              title={name}
+              aria-label={`${name} cover`}
+              onClick={() => {
+                void updateFolder(folder.id, { cover: `gradient:${name}` });
+                setOpen(false);
+              }}
+              className={cn(
+                'h-10 rounded-md transition hover:scale-105',
+                folder.cover === `gradient:${name}` && 'ring-foreground ring-2 ring-offset-2'
+              )}
+              style={{ background }}
+            />
+          ))}
+        </div>
+        <div className="mt-4 flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1" onClick={upload} disabled={uploading}>
+            <ImagePlus /> {uploading ? 'Uploading…' : 'Upload a photo'}
+          </Button>
+          {folder.cover && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                void updateFolder(folder.id, { cover: null });
+                setOpen(false);
+              }}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// A line or two about the folder, edited in place. Saved when you leave the box.
+function DescriptionInput({ folder, autoFocus }: { folder: Folder; autoFocus?: boolean }) {
+  const [value, setValue] = useState(folder.description);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const fit = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useEffect(fit, []);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      autoFocus={autoFocus}
+      value={value}
+      maxLength={2000}
+      onChange={(event) => {
+        setValue(event.target.value);
+        fit();
+      }}
+      onBlur={() => value.trim() !== folder.description && void updateFolder(folder.id, { description: value.trim() })}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          setValue(folder.description);
+          requestAnimationFrame(() => ref.current?.blur());
+        }
+      }}
+      aria-label="Folder description"
+      placeholder="Add a description…"
+      className="text-muted-foreground placeholder:text-muted-foreground/60 block w-full resize-none overflow-hidden bg-transparent text-sm leading-relaxed outline-none sm:text-base"
+    />
+  );
+}
+
+// Breadcrumbs and actions on top; then the cover banner, the icon, title, description and session details.
+export function FolderHeader({ folder }: { folder: Folder }) {
+  const [addingDescription, setAddingDescription] = useState(false);
+  const cover = coverBackground(folder);
+  const showDescription = !!folder.description || addingDescription;
+  return (
+    <div className="group/header flex flex-col">
+      <div className="flex min-h-9 items-center gap-1">
+        <Breadcrumbs folder={folder} />
+        <div className="ml-auto flex shrink-0 items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => startPresenting(folder.spaceId, folder.id)}
+            title="Present this folder full screen"
+          >
+            <Presentation />
+            <span className="hidden sm:inline">Present</span>
+          </Button>
+          <NotesToggle folder={folder} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Folder options">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <FolderMenuItems folder={folder} parts={menuParts} onRename={() => focusFolderTitle(folder.id)} />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {cover && (
+        <div
+          className="group/cover relative mt-2 h-32 overflow-hidden rounded-xl sm:h-44"
+          style={{ background: cover }}
+        >
+          <CoverPicker folder={folder}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="absolute right-3 bottom-3 opacity-0 shadow-sm transition group-hover/cover:opacity-100 focus-visible:opacity-100"
+            >
+              <ImageIcon /> Change cover
+            </Button>
+          </CoverPicker>
+        </div>
+      )}
+
+      <div className={cn('flex flex-col gap-1', cover ? '-mt-7 px-2' : 'mt-2')}>
+        {/* Above the cover it overlaps; only its own buttons take clicks, so "Change cover" stays reachable. */}
+        <div className="pointer-events-none relative z-10 flex items-end gap-2 *:pointer-events-auto">
+          <AppearancePicker folder={folder} raised={!!cover} />
+          {/* Shown on hover, like Notion: add what the folder doesn't have yet. */}
+          <div className="mb-1 flex gap-1 opacity-0 transition group-hover/header:opacity-100 focus-within:opacity-100">
+            {!cover && (
+              <CoverPicker folder={folder}>
+                <Button variant="ghost" size="xs" className="text-muted-foreground">
+                  <ImageIcon /> Add cover
+                </Button>
+              </CoverPicker>
+            )}
+            {!showDescription && (
+              <Button
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground"
+                onClick={() => setAddingDescription(true)}
+              >
+                <AlignLeft /> Add description
+              </Button>
+            )}
+          </div>
+        </div>
+        {/* Remounts when the saved title changes (e.g. renamed on another device). */}
+        <TitleInput key={folder.title} folder={folder} />
+        {showDescription && (
+          <DescriptionInput
+            key={folder.description}
+            folder={folder}
+            autoFocus={addingDescription && !folder.description}
+          />
+        )}
+        <div className="flex flex-col">
           <SessionDetails folder={folder} />
           <FolderHistory folder={folder} />
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => startPresenting(folder.spaceId, folder.id)}
-          title="Present this folder full screen"
-        >
-          <Presentation />
-          <span className="hidden sm:inline">Present</span>
-        </Button>
-        <NotesToggle folder={folder} />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Folder options">
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <FolderMenuItems folder={folder} parts={menuParts} onRename={() => focusFolderTitle(folder.id)} />
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </div>
   );

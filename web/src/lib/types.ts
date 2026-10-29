@@ -21,6 +21,10 @@ export type Folder = {
   spaceId: string;
   parentId: string | null;
   title: string;
+  // A short line under the title.
+  description: string;
+  // Banner: "gradient:<name>" or "upload:<token>" (see lib/covers.ts).
+  cover: string | null;
   icon: string | null;
   color: ColorName | null;
   position: string;
@@ -104,7 +108,7 @@ export type ChangeSet = {
   deleted: { folders: string[]; items: string[]; tags: string[]; highlights: string[] };
 };
 
-// A full-text match. The snippet marks matched words with  … .
+// A full-text match. The snippet marks matched words with \u0002 … \u0003.
 export type SearchHit = {
   type: 'item' | 'folder';
   id: string;

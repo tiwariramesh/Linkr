@@ -27,6 +27,8 @@ export const folderWire = (folder: FolderRow) => ({
   spaceId: folder.spaceId,
   parentId: folder.parentId,
   title: folder.title,
+  description: folder.description,
+  cover: folder.cover,
   icon: folder.icon,
   color: folder.color,
   position: folder.position,

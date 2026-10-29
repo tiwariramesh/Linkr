@@ -16,7 +16,7 @@ export function videoEmbedUrl(link: string): string | null {
 
   let youtubeId: string | null = null;
   if (host === 'youtu.be') youtubeId = url.pathname.slice(1).split('/')[0];
-  else if (host === 'youtube.com' || host === 'music.youtube.com') {
+  else if (['youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(host)) {
     youtubeId =
       url.pathname === '/watch'
         ? url.searchParams.get('v')

@@ -1,6 +1,17 @@
 import { useDroppable } from '@dnd-kit/core';
-import { CalendarDays, CornerDownLeft, FolderInput, FolderPlus, Paperclip, Plus, Trash2, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import {
+  CalendarDays,
+  CornerDownLeft,
+  FolderInput,
+  FolderPlus,
+  NotebookPen,
+  Paperclip,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useDragState, type DropData } from '@/components/dnd/dnd';
 import { FolderGlyph } from '@/components/folders/FolderGlyph';
@@ -9,8 +20,9 @@ import { COLORS } from '@/lib/colors';
 import { extractUrls, formatSessionDate } from '@/lib/format';
 import type { Folder } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { addFromText, createFolder, setSelection, trashItems, useStore } from '@/store/store';
-import { askMoveItems, focusFolderTitle } from '@/store/ui';
+import { itemPath } from '@/lib/items';
+import { addFromText, createFolder, createItem, setSelection, trashItems, useStore } from '@/store/store';
+import { askMoveItems, focusFolderTitle, focusItemTitle } from '@/store/ui';
 import { pickFiles, uploadFiles } from '@/store/uploads';
 
 // One box for everything: paste links (one or many) or type a note, then press Enter.
@@ -78,6 +90,77 @@ export function QuickAdd({ folderId }: { folderId: string | null }) {
         </Button>
       )}
     </div>
+  );
+}
+
+// Search within the folder: an icon that opens into a box. "/" opens it from the keyboard.
+export function FolderSearch({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLInputElement>(null);
+  const expanded = open || !!value;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (event.key !== '/' || target.closest('input, textarea, [contenteditable="true"]')) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      event.preventDefault();
+      setOpen(true);
+      requestAnimationFrame(() => ref.current?.focus());
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  if (!expanded) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Search this folder (/)"
+        title="Search this folder (/)"
+        onClick={() => {
+          setOpen(true);
+          requestAnimationFrame(() => ref.current?.focus());
+        }}
+      >
+        <Search />
+      </Button>
+    );
+  }
+  return (
+    <div className="relative">
+      <Search className="text-muted-foreground absolute top-1/2 left-2 size-3.5 -translate-y-1/2" />
+      <input
+        ref={ref}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={() => !value && setOpen(false)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            onChange('');
+            setOpen(false);
+          }
+        }}
+        placeholder="Search this folder"
+        aria-label="Search this folder"
+        className="border-input focus-visible:ring-ring/40 h-8 w-40 rounded-md border bg-transparent pr-2 pl-7 text-sm outline-none focus-visible:ring-3 sm:w-52"
+      />
+    </div>
+  );
+}
+
+// Starts a new note in the folder (null = Inbox) and opens it with its title ready to type.
+export function NewNoteButton({ folderId }: { folderId: string | null }) {
+  const navigate = useNavigate();
+  const add = async () => {
+    const note = await createItem({ kind: 'note', title: 'Untitled', notes: '', folderId });
+    if (!note) return;
+    focusItemTitle(note.id);
+    navigate(itemPath(note));
+  };
+  return (
+    <Button size="sm" onClick={add}>
+      <NotebookPen /> New note
+    </Button>
   );
 }
 

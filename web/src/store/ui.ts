@@ -9,6 +9,10 @@ type Ui = {
   mobileNavOpen: boolean;
   // A just-created folder whose title should be focused for typing.
   focusTitleFolderId: string | null;
+  // The same for a just-created note.
+  focusTitleItemId: string | null;
+  // The notes pane beside an open item (remembered per browser).
+  itemNotesOpen: boolean;
   paletteOpen: boolean;
   // The session notes panel beside a folder's items (remembered per browser).
   sessionNotesOpen: boolean;
@@ -21,6 +25,23 @@ type Ui = {
 };
 
 const SESSION_NOTES_KEY = 'linkr-session-notes';
+const ITEM_NOTES_KEY = 'linkr-item-notes';
+
+function readFlag(key: string, fallback: boolean) {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value === 'open';
+  } catch {
+    return fallback;
+  }
+}
+function writeFlag(key: string, open: boolean) {
+  try {
+    localStorage.setItem(key, open ? 'open' : 'closed');
+  } catch {
+    // storage blocked
+  }
+}
 function readSessionNotesOpen() {
   try {
     return localStorage.getItem(SESSION_NOTES_KEY) === 'open';
@@ -36,6 +57,8 @@ export const useUi = create<Ui>(() => ({
   movingItemIds: null,
   mobileNavOpen: false,
   focusTitleFolderId: null,
+  focusTitleItemId: null,
+  itemNotesOpen: readFlag(ITEM_NOTES_KEY, true),
   paletteOpen: false,
   sessionNotesOpen: readSessionNotesOpen(),
   runAgainFolderId: null,
@@ -50,6 +73,11 @@ export const closeSettings = () => useUi.setState({ settingsOpen: false });
 export const askMoveItems = (ids: string[] | null) => useUi.setState({ movingItemIds: ids });
 export const setMobileNav = (open: boolean) => useUi.setState({ mobileNavOpen: open });
 export const focusFolderTitle = (id: string | null) => useUi.setState({ focusTitleFolderId: id });
+export const focusItemTitle = (id: string | null) => useUi.setState({ focusTitleItemId: id });
+export function showItemNotes(open: boolean) {
+  useUi.setState({ itemNotesOpen: open });
+  writeFlag(ITEM_NOTES_KEY, open);
+}
 export const askRunAgain = (folderId: string | null) => useUi.setState({ runAgainFolderId: folderId });
 export const focusHighlight = (id: string | null) => useUi.setState({ focusHighlightId: id });
 export const openPalette = (open: boolean) => useUi.setState({ paletteOpen: open });
