@@ -9,6 +9,7 @@ import { HttpError, parseInput, type AppEnv } from '../http.ts';
 import { requireRole } from '../lib/access.ts';
 import { changesSince, spaceSnapshot, spaceWire, userSpaces } from '../lib/data.ts';
 import { idSchema, newId } from '../lib/ids.ts';
+import { searchSpace } from '../lib/search.ts';
 import { clearItemStorage } from '../lib/files.ts';
 
 const COLORS = ['gray', 'red', 'orange', 'amber', 'green', 'teal', 'blue', 'indigo', 'purple', 'pink'] as const;
@@ -87,6 +88,13 @@ export const spaceRoutes = new Hono<AppEnv>()
     const since = Number(c.req.query('since') ?? 0);
     if (!Number.isInteger(since) || since < 0) throw new HttpError(422, 'Invalid "since"');
     return c.json(changesSince(spaceId, since));
+  })
+  // Full-text search across the space's items, reader copies, highlights and session notes.
+  .get('/spaces/:id/search', (c) => {
+    const spaceId = c.req.param('id');
+    requireRole(c.var.user.id, spaceId, 'viewer');
+    const q = (c.req.query('q') ?? '').slice(0, 200);
+    return c.json({ hits: searchSpace(spaceId, q) });
   })
   // One stream per open tab. It only says "space X is now at seq N"; the tab fetches the rows itself.
   .get('/events', (c) => {

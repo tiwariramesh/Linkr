@@ -33,6 +33,8 @@ export type Folder = {
   pinned: boolean;
   archivedAt: string | null;
   deletedAt: string | null;
+  // The folder this one was copied from with "Run again".
+  copiedFrom: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -100,6 +102,14 @@ export type ChangeSet = {
   tags: Tag[];
   highlights: Highlight[];
   deleted: { folders: string[]; items: string[]; tags: string[]; highlights: string[] };
+};
+
+// A full-text match. The snippet marks matched words with  … .
+export type SearchHit = {
+  type: 'item' | 'folder';
+  id: string;
+  field: 'title' | 'notes' | 'page' | 'highlight' | 'session';
+  snippet: string;
 };
 
 export type AppInfo = {

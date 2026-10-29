@@ -121,6 +121,8 @@ export const folders = sqliteTable(
     pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
     archivedAt: text('archived_at'),
     deletedAt: text('deleted_at'),
+    // The folder this one was copied from with "Run again" (null if the original has since been deleted).
+    copiedFrom: text('copied_from').references((): AnySQLiteColumn => folders.id, { onDelete: 'set null' }),
     createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),

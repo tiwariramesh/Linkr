@@ -12,6 +12,8 @@ type Ui = {
   paletteOpen: boolean;
   // The session notes panel beside a folder's items (remembered per browser).
   sessionNotesOpen: boolean;
+  // The folder being copied with "Run again" (its dialog is open).
+  runAgainFolderId: string | null;
   // A highlight to scroll to and flash in the reader view (set from a highlights list).
   focusHighlightId: string | null;
   // Highlights of the open reader copy whose text couldn't be found in it.
@@ -36,6 +38,7 @@ export const useUi = create<Ui>(() => ({
   focusTitleFolderId: null,
   paletteOpen: false,
   sessionNotesOpen: readSessionNotesOpen(),
+  runAgainFolderId: null,
   focusHighlightId: null,
   lostHighlightIds: [],
 }));
@@ -47,6 +50,7 @@ export const closeSettings = () => useUi.setState({ settingsOpen: false });
 export const askMoveItems = (ids: string[] | null) => useUi.setState({ movingItemIds: ids });
 export const setMobileNav = (open: boolean) => useUi.setState({ mobileNavOpen: open });
 export const focusFolderTitle = (id: string | null) => useUi.setState({ focusTitleFolderId: id });
+export const askRunAgain = (folderId: string | null) => useUi.setState({ runAgainFolderId: folderId });
 export const focusHighlight = (id: string | null) => useUi.setState({ focusHighlightId: id });
 export const openPalette = (open: boolean) => useUi.setState({ paletteOpen: open });
 export function showSessionNotes(open: boolean) {

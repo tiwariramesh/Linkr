@@ -35,6 +35,9 @@ const MoveDialog = lazy(() => import('@/components/items/MoveDialog').then((m) =
 const SettingsDialog = lazy(() =>
   import('@/components/settings/SettingsDialog').then((m) => ({ default: m.SettingsDialog }))
 );
+const RunAgainDialog = lazy(() =>
+  import('@/components/folders/RunAgainDialog').then((m) => ({ default: m.RunAgainDialog }))
+);
 const CommandPalette = lazy(() =>
   import('@/components/shell/CommandPalette').then((m) => ({ default: m.CommandPalette }))
 );
@@ -94,6 +97,7 @@ export function AppShell() {
   const moving = useUi((state) => state.movingItemIds !== null);
   const settingsOpen = useUi((state) => state.settingsOpen);
   const paletteOpen = useUi((state) => state.paletteOpen);
+  const runningAgain = useUi((state) => state.runAgainFolderId !== null);
   // Mounted on first use, then kept so it opens instantly.
   const [paletteUsed, setPaletteUsed] = useState(false);
   if (paletteOpen && !paletteUsed) setPaletteUsed(true);
@@ -246,6 +250,7 @@ export function AppShell() {
         {moving && <MoveDialog />}
         {settingsOpen && <SettingsDialog />}
         {paletteUsed && <CommandPalette />}
+        {runningAgain && <RunAgainDialog />}
       </Suspense>
       <Capture />
     </DndContext>

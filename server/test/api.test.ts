@@ -336,6 +336,124 @@ describe('Linkr API', () => {
     assert.equal((await call('GET', `/api/spaces/${spaceId}/snapshot`)).body.highlights.length, 0);
   });
 
+  test('full-text search finds titles, notes, highlights and session notes, and nothing in the Trash', async () => {
+    const { call, spaceId } = await signUp('searcher');
+    const outsider = await signUp('nosy');
+    const search = async (q: string, who = call) =>
+      (await who('GET', `/api/spaces/${spaceId}/search?q=${encodeURIComponent(q)}`)).body?.hits ?? [];
+    const folder = (await call('POST', '/api/folders', { spaceId, title: 'Week 5 · Spacing', term: 'Term 2' })).body;
+    await call('PATCH', `/api/folders/${folder.id}`, { notes: 'Bring index cards for the interleaving drill' });
+    const note = (
+      await call('POST', '/api/items', {
+        spaceId,
+        folderId: folder.id,
+        kind: 'note',
+        notes: 'Café quiz on mitochondria',
+      })
+    ).body;
+    await call('POST', '/api/highlights', { itemId: note.id, quote: 'photosynthesis happens in chloroplasts' });
+
+    const pick = (hits: { type: string; id: string; field: string }[]) => hits.map((h) => [h.type, h.id, h.field]);
+    assert.deepEqual(pick(await search('mitochond')), [['item', note.id, 'title']], 'words match as prefixes');
+    assert.deepEqual(pick(await search('cafe')), [['item', note.id, 'title']], 'accents are ignored');
+    assert.deepEqual(pick(await search('chloroplasts')), [['item', note.id, 'highlight']]);
+    const session = await search('interleaving drill');
+    assert.deepEqual(pick(session), [['folder', folder.id, 'session']]);
+    assert.match(session[0].snippet, /\u0002interleaving\u0003/);
+    assert.deepEqual(pick(await search('term 2')), [['folder', folder.id, 'session']]);
+    assert.deepEqual(await search('"); DROP TABLE items; --'), [], 'input is words only, never query syntax');
+    assert.equal((await outsider.call('GET', `/api/spaces/${spaceId}/search?q=cafe`)).status, 404);
+
+    await call('PATCH', `/api/items/${note.id}`, { notes: 'Renamed topic', title: 'Renamed topic' });
+    assert.deepEqual(await search('mitochondria'), [], 'the index follows edits');
+    assert.equal((await search('renamed')).length, 1);
+    await call('POST', '/api/items/trash', { ids: [note.id] });
+    assert.deepEqual(await search('renamed'), [], 'trashed items drop out');
+  });
+
+  test('run again copies a session for a new term, with its links, notes, files and highlights', async () => {
+    const { call, send, spaceId } = await signUp('rerunner');
+    const course = (await call('POST', '/api/folders', { spaceId, title: 'AI 101' })).body;
+    const week = (
+      await call('POST', '/api/folders', {
+        spaceId,
+        title: 'Week 1',
+        parentId: course.id,
+        sessionDate: '2026-02-11',
+        term: 'Term 1',
+      })
+    ).body;
+    const later = (await call('POST', '/api/folders', { spaceId, title: 'Week 2', parentId: course.id })).body;
+    const extras = (await call('POST', '/api/folders', { spaceId, title: 'Extras', parentId: week.id, term: 'Term 1' }))
+      .body;
+    await call('PATCH', `/api/folders/${week.id}`, { notes: 'Plan: warm-up first' });
+    const note = (await call('POST', '/api/items', { spaceId, folderId: week.id, kind: 'note', notes: 'Exit ticket' }))
+      .body;
+    await call('PATCH', `/api/items/${note.id}`, { description: 'kept' });
+    const pdf = Buffer.from('%PDF-1.4 handout');
+    const upload = (
+      await send(
+        'POST',
+        `/api/items/upload?spaceId=${spaceId}&folderId=${extras.id}&name=handout.pdf`,
+        pdf,
+        'application/pdf'
+      )
+    ).body;
+    await call('POST', '/api/highlights', { itemId: note.id, quote: 'Exit ticket' });
+
+    const copied = await call('POST', `/api/folders/${week.id}/run-again`, {
+      title: 'Week 1',
+      sessionDate: '2026-07-15',
+      term: 'Term 2',
+    });
+    assert.equal(copied.status, 201, JSON.stringify(copied.body));
+    const copy = copied.body;
+    assert.deepEqual(
+      [copy.copiedFrom, copy.parentId, copy.sessionDate, copy.term, copy.notes],
+      [week.id, course.id, '2026-07-15', 'Term 2', 'Plan: warm-up first']
+    );
+    assert.ok(week.position < copy.position && copy.position < later.position, 'placed right after the original');
+
+    const snap = (await call('GET', `/api/spaces/${spaceId}/snapshot`)).body;
+    const extrasCopy = snap.folders.find((f: { copiedFrom: string }) => f.copiedFrom === extras.id);
+    assert.deepEqual([extrasCopy.parentId, extrasCopy.term, extrasCopy.sessionDate], [copy.id, 'Term 2', null]);
+    const noteCopy = snap.items.find(
+      (i: { folderId: string; kind: string }) => i.folderId === copy.id && i.kind === 'note'
+    );
+    assert.deepEqual([noteCopy.notes, noteCopy.description], ['Exit ticket', 'kept']);
+    assert.equal(snap.highlights.filter((h: { itemId: string }) => h.itemId === noteCopy.id).length, 1);
+    const fileCopy = snap.items.find((i: { folderId: string }) => i.folderId === extrasCopy.id);
+    assert.notEqual(fileCopy.file.id, upload.file.id);
+    assert.ok((await send('GET', `/api/files/${fileCopy.file.id}`)).bytes.equals(pdf), 'the file itself was copied');
+
+    // A bare copy: one folder, blank notes, no highlights (a note item still keeps its text).
+    const bare = (
+      await call('POST', `/api/folders/${week.id}/run-again`, {
+        title: 'Week 1 (blank)',
+        subfolders: false,
+        notes: false,
+        highlights: false,
+      })
+    ).body;
+    const after = (await call('GET', `/api/spaces/${spaceId}/snapshot`)).body;
+    assert.equal(bare.notes, '');
+    assert.equal(after.folders.filter((f: { parentId: string }) => f.parentId === bare.id).length, 0);
+    const bareNote = after.items.find((i: { folderId: string }) => i.folderId === bare.id);
+    assert.equal(bareNote.notes, 'Exit ticket');
+    assert.equal(after.highlights.filter((h: { itemId: string }) => h.itemId === bareNote.id).length, 0);
+
+    assert.equal(
+      (await call('POST', `/api/folders/${week.id}/run-again`, { title: 'x', parentId: extras.id })).status,
+      422
+    );
+
+    // The copies outlive their original.
+    await call('POST', `/api/folders/${week.id}/trash`);
+    assert.equal((await call('DELETE', `/api/folders/${week.id}`)).status, 204);
+    const final = (await call('GET', `/api/spaces/${spaceId}/snapshot`)).body;
+    assert.equal(final.folders.find((f: { id: string }) => f.id === copy.id).copiedFrom, null);
+  });
+
   test('deleting an account removes its Personal space and everything in it', async () => {
     const { call, spaceId } = await signUp('leaver');
     await call('POST', '/api/items', { spaceId, kind: 'note', notes: 'bye' });

@@ -1,11 +1,25 @@
-import { Archive, ArchiveRestore, Ban, FolderPlus, Palette, Pencil, Smile, Star, StarOff, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  ArchiveRestore,
+  Ban,
+  FolderPlus,
+  Palette,
+  Pencil,
+  Presentation,
+  Repeat,
+  Smile,
+  Star,
+  StarOff,
+  Trash2,
+} from 'lucide-react';
 import type { ComponentType, ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { COLOR_NAMES, COLORS, FOLDER_ICONS } from '@/lib/colors';
 import type { Folder } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { createFolder, trashFolder, updateFolder } from '@/store/store';
-import { focusFolderTitle, setExpanded } from '@/store/ui';
+import { startPresenting } from '@/lib/present';
+import { askRunAgain, focusFolderTitle, setExpanded } from '@/store/ui';
 
 // The same actions appear in the "…" menu and the right-click menu; each passes in its own menu parts.
 type MenuParts = {
@@ -103,6 +117,13 @@ export function FolderMenuItems({
             <Star /> Add to favourites
           </>
         )}
+      </Item>
+      <Separator />
+      <Item onSelect={() => startPresenting(folder.spaceId, folder.id)}>
+        <Presentation /> Present
+      </Item>
+      <Item onSelect={() => askRunAgain(folder.id)}>
+        <Repeat /> Run again…
       </Item>
       <Separator />
       <Item onSelect={() => updateFolder(folder.id, { archived: !folder.archivedAt })}>

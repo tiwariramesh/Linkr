@@ -9,6 +9,7 @@ import { loadAppInfo, loadSession, preferredSpaceId, useStore } from '@/store/st
 
 const ArchivePage = lazy(() => import('@/pages/ArchivePage').then((m) => ({ default: m.ArchivePage })));
 const ItemPage = lazy(() => import('@/pages/ItemPage').then((m) => ({ default: m.ItemPage })));
+const PresentPage = lazy(() => import('@/pages/PresentPage').then((m) => ({ default: m.PresentPage })));
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })));
 
 function Splash() {
@@ -62,6 +63,14 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <ItemPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'present/:folderId',
+            element: (
+              <Suspense>
+                <PresentPage />
               </Suspense>
             ),
           },

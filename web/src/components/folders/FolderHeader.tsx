@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, MoreHorizontal, NotebookPen, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, History, MoreHorizontal, NotebookPen, Presentation, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { COLOR_NAMES, COLORS, FOLDER_ICONS } from '@/lib/colors';
 import { formatSessionDate } from '@/lib/format';
+import { startPresenting } from '@/lib/present';
 import { folderPath } from '@/lib/tree';
 import type { Folder } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -258,6 +259,48 @@ function TitleInput({ folder }: { folder: Folder }) {
   );
 }
 
+// Where this session came from and where it has run since ("Run again" copies).
+function FolderHistory({ folder }: { folder: Folder }) {
+  const original = useStore((state) => (folder.copiedFrom ? state.folders[folder.copiedFrom] : undefined));
+  const copies = useStore(
+    useShallow((state) =>
+      Object.values(state.folders)
+        .filter((f) => f.copiedFrom === folder.id && !f.deletedAt)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    )
+  );
+  if (!original && copies.length === 0) return null;
+  const label = (f: Folder) =>
+    [f.title, f.term, f.sessionDate && formatSessionDate(f.sessionDate)].filter(Boolean).join(' · ');
+  const link = (f: Folder) => (
+    <Link
+      key={f.id}
+      to={`/s/${f.spaceId}/f/${f.id}`}
+      className="hover:text-foreground underline-offset-2 hover:underline"
+    >
+      {label(f)}
+    </Link>
+  );
+  return (
+    <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-1.5 pt-0.5 text-xs">
+      <History className="size-3.5" />
+      {original && <span>Run again from {link(original)}</span>}
+      {original && copies.length > 0 && <span>·</span>}
+      {copies.length > 0 && (
+        <span className="flex flex-wrap gap-x-1.5">
+          Run again as{' '}
+          {copies.map((copy, index) => (
+            <span key={copy.id}>
+              {link(copy)}
+              {index < copies.length - 1 && ','}
+            </span>
+          ))}
+        </span>
+      )}
+    </p>
+  );
+}
+
 function NotesToggle({ folder }: { folder: Folder }) {
   const open = useUi((state) => state.sessionNotesOpen);
   return (
@@ -285,7 +328,17 @@ export function FolderHeader({ folder }: { folder: Folder }) {
           {/* Remounts when the saved title changes (e.g. renamed on another device). */}
           <TitleInput key={folder.title} folder={folder} />
           <SessionDetails folder={folder} />
+          <FolderHistory folder={folder} />
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => startPresenting(folder.spaceId, folder.id)}
+          title="Present this folder full screen"
+        >
+          <Presentation />
+          <span className="hidden sm:inline">Present</span>
+        </Button>
         <NotesToggle folder={folder} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

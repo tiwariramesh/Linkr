@@ -1,4 +1,4 @@
-import { BookOpen, ChevronLeft, ChevronRight, ExternalLink, Globe, X } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, ExternalLink, Globe, History, Presentation, X } from 'lucide-react';
 import {
   useEffect,
   useMemo,
@@ -14,12 +14,16 @@ import { ItemHighlights } from '@/components/highlights/HighlightList';
 import { Favicon, ItemMenu } from '@/components/items/ItemParts';
 import { defaultMode, Preview, type LinkMode } from '@/components/preview/Preview';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { videoEmbedUrl } from '@/lib/embed';
+import { formatSessionDate } from '@/lib/format';
 import { readInboxView } from '@/lib/inbox-view';
 import { externalUrl, itemPath, itemSubtitle } from '@/lib/items';
-import { itemsInFolder } from '@/lib/tree';
+import { startPresenting } from '@/lib/present';
+import { folderPath, itemsInFolder } from '@/lib/tree';
+import { sameLinkElsewhere } from '@/lib/urls';
 import type { Folder, Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/store/store';
@@ -139,6 +143,55 @@ function NotesPane({ item, folder }: { item: Item; folder: Folder | undefined })
         )}
       </div>
     </div>
+  );
+}
+
+// The same link saved in other folders: where else it has been used, across sessions and terms.
+function UsedIn({ item }: { item: Item }) {
+  const navigate = useNavigate();
+  const items = useStore((s) => s.items);
+  const folders = useStore((s) => s.folders);
+  const others = useMemo(() => sameLinkElsewhere(items, item), [items, item]);
+  if (others.length === 0) return null;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" title="Where else this link is saved">
+          <History /> <span className="hidden md:inline">Used in</span> {others.length}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-1">
+        <p className="text-muted-foreground px-2 pt-1.5 pb-1 text-xs">Also saved in</p>
+        {others.map((other) => {
+          const folder = other.folderId ? folders[other.folderId] : undefined;
+          return (
+            <button
+              key={other.id}
+              type="button"
+              onClick={() => navigate(itemPath(other))}
+              className="hover:bg-muted flex w-full flex-col rounded-md px-2 py-1.5 text-left"
+            >
+              <span className="truncate text-sm">
+                {folder
+                  ? folderPath(folders, folder.id)
+                      .map((f) => f.title)
+                      .join(' / ')
+                  : 'Inbox'}
+              </span>
+              <span className="text-muted-foreground truncate text-xs">
+                {[
+                  folder?.term,
+                  folder?.sessionDate && formatSessionDate(folder.sessionDate),
+                  other.deletedAt && 'in Trash',
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || `Saved ${new Date(other.createdAt).toLocaleDateString()}`}
+              </span>
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -302,6 +355,17 @@ function ItemView() {
             </ToggleGroupItem>
           </ToggleGroup>
         )}
+        <UsedIn item={item} />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => startPresenting(item.spaceId, item.folderId, item.id)}
+          aria-label="Present from here"
+          title="Present the folder from this item"
+          className="hidden sm:inline-flex"
+        >
+          <Presentation />
+        </Button>
         {externalUrl(item) && (
           <Button variant="ghost" size="icon" asChild>
             <a

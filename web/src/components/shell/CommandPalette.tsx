@@ -27,13 +27,14 @@ import {
   CommandList,
   CommandShortcut,
 } from '@/components/ui/command';
-import { extractUrls } from '@/lib/format';
+import { api } from '@/lib/api';
+import { extractUrls, formatSessionDate } from '@/lib/format';
 import { itemSubtitle, openItem } from '@/lib/items';
 import { setTheme } from '@/lib/theme';
 import { folderPath, folderStatus } from '@/lib/tree';
-import type { Folder, Item } from '@/lib/types';
+import type { Folder, Item, SearchHit } from '@/lib/types';
 import { addFromText, createFolder, useStore } from '@/store/store';
-import { focusFolderTitle, openPalette, openSettings, useUi } from '@/store/ui';
+import { focusFolderTitle, openPalette, openSettings, showSessionNotes, useUi } from '@/store/ui';
 import { pickFiles } from '@/store/uploads';
 
 type Action = { id: string; label: string; keywords?: string; icon: ReactNode; run: () => void };
@@ -55,6 +56,27 @@ function searchItems(items: Record<string, Item>, terms: string[], limit: number
     .sort((a, b) => b[1] - a[1] || b[0].createdAt.localeCompare(a[0].createdAt))
     .slice(0, limit)
     .map(([item]) => item);
+}
+
+const FIELD_LABELS: Record<SearchHit['field'], string> = {
+  title: 'Title',
+  notes: 'Notes',
+  page: 'Page',
+  highlight: 'Highlight',
+  session: 'Session notes',
+};
+
+// Server snippets mark matched words with \u0002 … \u0003.
+function Snippet({ text }: { text: string }) {
+  return text.split(/(\u0002[^\u0003]*\u0003)/).map((part, index) =>
+    part.startsWith('\u0002') ? (
+      <mark key={index} className="text-foreground">
+        {part.slice(1, -1)}
+      </mark>
+    ) : (
+      part
+    )
+  );
 }
 
 export function CommandPalette() {
@@ -103,6 +125,30 @@ export function CommandPalette() {
   const foundFolders = terms.length
     ? paths.filter(({ path }) => terms.every((term) => path.toLowerCase().includes(term))).slice(0, 6)
     : [];
+
+  // Full-text matches from the server (notes, saved pages, highlights, session notes), shortly after typing
+  // stops. Results are kept with the query they answer, so a slow reply never shows under newer text.
+  const [found, setFound] = useState<{ query: string; hits: SearchHit[] } | null>(null);
+  useEffect(() => {
+    const q = query.trim();
+    if (!open || !spaceId || q.length < 2) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      api
+        .get<{ hits: SearchHit[] }>(`/spaces/${spaceId}/search?q=${encodeURIComponent(q)}`)
+        .then((result) => !cancelled && setFound({ query: q, hits: result.hits }))
+        .catch(() => {});
+    }, 180);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query, open, spaceId]);
+  const shownItemIds = new Set(foundItems.map((item) => item.id));
+  const shownFolderIds = new Set(foundFolders.map(({ folder }) => folder.id));
+  const textHits = (found && found.query === query.trim() ? found.hits : []).filter((hit) =>
+    hit.type === 'item' ? items[hit.id] && !shownItemIds.has(hit.id) : folders[hit.id] && !shownFolderIds.has(hit.id)
+  );
 
   const close = () => {
     openPalette(false);
@@ -216,6 +262,14 @@ export function CommandPalette() {
           .join(' / ')
       : 'Inbox';
 
+  const whenFolder = (folder: Folder) =>
+    [folder.term, folder.sessionDate && formatSessionDate(folder.sessionDate)].filter(Boolean).join(' · ') ||
+    folderLabel({ folderId: folder.parentId } as Item);
+  const whereItem = (item: Item) => {
+    const folder = item.folderId ? folders[item.folderId] : undefined;
+    return [folderLabel(item), folder?.term].filter(Boolean).join(' · ');
+  };
+
   const actionGroup = (heading: string, list: Action[]) =>
     list.length > 0 && (
       <CommandGroup heading={heading}>
@@ -259,6 +313,44 @@ export function CommandPalette() {
                   </CommandShortcut>
                 </CommandItem>
               ))}
+            </CommandGroup>
+          )}
+          {textHits.length > 0 && (
+            <CommandGroup heading="Found in notes and pages">
+              {textHits.slice(0, 10).map((hit) => {
+                const item = hit.type === 'item' ? items[hit.id] : undefined;
+                const folder = hit.type === 'folder' ? folders[hit.id] : undefined;
+                return (
+                  <CommandItem
+                    key={`${hit.type}-${hit.id}`}
+                    value={`hit-${hit.type}-${hit.id}`}
+                    onSelect={run(() => {
+                      if (item) openItem(item);
+                      else if (folder) {
+                        if (hit.field === 'session') showSessionNotes(true);
+                        navigate(`${base}/f/${folder.id}`);
+                      }
+                    })}
+                    className="items-start"
+                  >
+                    {item ? <Favicon item={item} className="mt-0.5" /> : folder && <FolderGlyph folder={folder} />}
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate">
+                        {item?.title ?? folder?.title}
+                        {/* The same link or session can exist in several terms: say which this is. */}
+                        <span className="text-muted-foreground">
+                          {' '}
+                          · {item ? whereItem(item) : folder && whenFolder(folder)}
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground line-clamp-2 text-xs">
+                        <span className="font-medium">{FIELD_LABELS[hit.field]}: </span>
+                        <Snippet text={hit.snippet} />
+                      </span>
+                    </span>
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           )}
           {foundFolders.length > 0 && (

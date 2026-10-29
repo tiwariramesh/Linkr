@@ -9,6 +9,7 @@ import { assertFolderInSpace, loadFolder, requireRole } from '../lib/access.ts';
 import { folderWire } from '../lib/data.ts';
 import { documentSchema, idSchema, newId } from '../lib/ids.ts';
 import { clearItemStorage } from '../lib/files.ts';
+import { runAgain } from '../lib/duplicate.ts';
 import { folderPositionAtEnd, isValidPosition } from '../lib/positions.ts';
 import { colorSchema } from './spaces.ts';
 
@@ -117,6 +118,26 @@ export const folderRoutes = new Hono<AppEnv>()
       touch({ entity: 'folder', id: folder.id });
     });
     return c.json(folderWire(db.select().from(folders).where(eq(folders.id, folder.id)).get()!));
+  })
+  // "Run again": a copy of the session (optionally with its subfolders) for a new date or term.
+  .post('/folders/:id/run-again', async (c) => {
+    const userId = c.var.user.id;
+    const folder = loadFolder(userId, c.req.param('id'), 'editor');
+    const input = parseInput(
+      z.object({
+        title: folderFields.title,
+        sessionDate: folderFields.sessionDate.default(null),
+        term: folderFields.term.default(null),
+        parentId: folderFields.parentId.optional(),
+        subfolders: z.boolean().default(true),
+        notes: z.boolean().default(true),
+        highlights: z.boolean().default(true),
+      }),
+      await c.req.json()
+    );
+    if (input.parentId) assertFolderInSpace(input.parentId, folder.spaceId);
+    const id = runAgain(folder.id, userId, input);
+    return c.json(folderWire(db.select().from(folders).where(eq(folders.id, id)).get()!), 201);
   })
   // Trash: the folder hides its whole subtree until restored or purged.
   .post('/folders/:id/trash', (c) => {

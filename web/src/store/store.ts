@@ -4,7 +4,9 @@ import { create } from 'zustand';
 import { api, ApiError, setUnauthorizedHandler } from '@/lib/api';
 import { extractUrls, hostOf } from '@/lib/format';
 import { newId } from '@/lib/ids';
+import { openItem } from '@/lib/items';
 import { childFolders, itemsInFolder } from '@/lib/tree';
+import { sameLinkElsewhere } from '@/lib/urls';
 import type {
   AppInfo,
   ChangeSet,
@@ -273,6 +275,7 @@ export async function createFolder(input: { parentId: string | null; title: stri
     pinned: false,
     archivedAt: null,
     deletedAt: null,
+    copiedFrom: null,
     createdAt: now,
     updatedAt: now,
     position: generateKeyBetween(siblings.at(-1)?.position ?? null, null),
@@ -347,10 +350,31 @@ export async function purgeFolder(id: string) {
 
 // ---- Items ----
 
+// Says where a link was saved before. If it's already in this folder, it isn't saved twice.
+function alreadySaved(url: string, folderId: string | null): boolean {
+  const { items, folders } = get();
+  const others = sameLinkElsewhere(items, { id: '', url });
+  if (others.length === 0) return false;
+  const here = others.find((item) => item.folderId === folderId);
+  const where = (item: Item) => (item.folderId ? (folders[item.folderId]?.title ?? 'a folder') : 'Inbox');
+  const shown = here ?? others[0];
+  toast(
+    here
+      ? 'Already saved in this folder'
+      : `Also saved in ${where(shown)}${others.length > 1 ? ` and ${others.length - 1} more` : ''}`,
+    {
+      description: shown.title,
+      action: { label: 'Open', onClick: () => openItem(shown) },
+    }
+  );
+  return !!here;
+}
+
 // "Paste a link or type a note": each URL becomes a link; anything else becomes one note.
 // Returns the new items' IDs.
 export async function addFromText(text: string, folderId: string | null): Promise<string[]> {
-  const urls = extractUrls(text);
+  const urls = extractUrls(text)?.filter((url) => !alreadySaved(url, folderId)) ?? null;
+  if (urls && urls.length === 0) return [];
   const created = urls
     ? await Promise.all([...urls].reverse().map((url) => createItem({ kind: 'link', url, folderId })))
     : [await createItem({ kind: 'note', notes: text.trim(), folderId })];
@@ -514,6 +538,24 @@ export async function deleteTag(id: string) {
     ),
   }));
   await save([id], () => api.delete(`/tags/${id}`));
+}
+
+// "Run again": copies a session for a new date or term. Returns the copy once the server has made it.
+export async function runAgain(
+  folderId: string,
+  options: {
+    title: string;
+    sessionDate: string | null;
+    term: string | null;
+    parentId: string | null;
+    subfolders: boolean;
+    notes: boolean;
+    highlights: boolean;
+  }
+): Promise<Folder | undefined> {
+  const copy = await save([], () => api.post<Folder>(`/folders/${folderId}/run-again`, options));
+  if (copy) set((state) => ({ folders: { ...state.folders, [copy.id]: copy } }));
+  return copy;
 }
 
 // ---- Highlights ----

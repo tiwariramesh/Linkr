@@ -38,6 +38,7 @@ export const folderWire = (folder: FolderRow) => ({
   pinned: folder.pinned,
   archivedAt: folder.archivedAt,
   deletedAt: folder.deletedAt,
+  copiedFrom: folder.copiedFrom,
   createdAt: folder.createdAt,
   updatedAt: folder.updatedAt,
 });

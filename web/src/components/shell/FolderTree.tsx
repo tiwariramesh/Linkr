@@ -133,6 +133,16 @@ function FolderNode({ folder, depth, counts }: { folder: Folder; depth: number; 
               >
                 <FolderGlyph folder={folder} open={expanded && children.length > 0} />
                 <span className="truncate">{folder.title}</span>
+                {/* Sessions run in several terms share a name; the date tells them apart. */}
+                {folder.sessionDate && (
+                  <span className="text-muted-foreground shrink-0 text-[11px] font-normal">
+                    {new Date(`${folder.sessionDate}T00:00:00`).toLocaleDateString(undefined, {
+                      day: 'numeric',
+                      month: 'short',
+                      year: folder.sessionDate.slice(0, 4) === String(new Date().getFullYear()) ? undefined : '2-digit',
+                    })}
+                  </span>
+                )}
               </NavLink>
             )}
             {!renaming && (

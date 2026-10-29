@@ -226,6 +226,56 @@ function Toolbar({ editor, folderId }: { editor: Editor; folderId: string | null
   );
 }
 
+// What notes can contain. Shared by the editor and the read-only view so both understand the same documents.
+const noteExtensions = (placeholder = '') => [
+  StarterKit.configure({
+    heading: { levels: [2, 3] },
+    link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
+  }),
+  Placeholder.configure({ placeholder }),
+  Highlight,
+  TaskList,
+  TaskItem.configure({ nested: true }),
+  Image,
+  Youtube.configure({
+    nocookie: true,
+    modestBranding: true,
+    rel: 0,
+    // YouTube refuses to play without knowing which site embeds it; the app's default policy sends nothing.
+    HTMLAttributes: { referrerpolicy: 'strict-origin-when-cross-origin' },
+  }),
+];
+
+// Notes shown but not edited (presenter mode). Links open normally here.
+export function RichView({
+  body,
+  fallbackText = '',
+  className,
+}: {
+  body: string | null;
+  fallbackText?: string;
+  className?: string;
+}) {
+  const editor = useEditor(
+    {
+      editable: false,
+      extensions: noteExtensions(),
+      content: toContent(body, fallbackText),
+      editorProps: {
+        attributes: { class: cn('tiptap prose dark:prose-invert max-w-none focus:outline-none', className) },
+        handleClick: (_view, _pos, event) => {
+          const link = (event.target as HTMLElement).closest('a');
+          if (!link?.href) return false;
+          window.open(link.href, '_blank', 'noopener,noreferrer');
+          return true;
+        },
+      },
+    },
+    [body, fallbackText]
+  );
+  return <EditorContent editor={editor} />;
+}
+
 // Notes that save themselves. Markdown shortcuts work (# heading, - list, [ ] checklist, > quote),
 // pasted YouTube links become players, and pasted or dropped images are uploaded and shown inline.
 // Edits from other devices replace the text only while there are no unsaved changes here.
@@ -275,24 +325,7 @@ export function RichEditor({
   };
 
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3] },
-        link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
-      }),
-      Placeholder.configure({ placeholder }),
-      Highlight,
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Image,
-      Youtube.configure({
-        nocookie: true,
-        modestBranding: true,
-        rel: 0,
-        // YouTube refuses to play without knowing which site embeds it; the app's default policy sends nothing.
-        HTMLAttributes: { referrerpolicy: 'strict-origin-when-cross-origin' },
-      }),
-    ],
+    extensions: noteExtensions(placeholder),
     content: toContent(body, fallbackText),
     editorProps: {
       attributes: {
