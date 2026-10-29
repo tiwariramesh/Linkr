@@ -16,15 +16,10 @@ export default defineConfig({
     },
   },
   server: {
+    // Dev only: the Linkr server (npm run dev in /server) handles the API.
     proxy: {
-      '/api': {
-        target: 'http://host.docker.internal:' + (process.env.BACKEND_PORT || '8000'),
-        changeOrigin: true,
-      },
-      '/content': {
-        target: 'http://host.docker.internal:' + (process.env.BACKEND_PORT || '8000'),
-        changeOrigin: true,
-      },
+      '/api': 'http://127.0.0.1:' + (process.env.BACKEND_PORT || '8080'),
+      '/content': 'http://127.0.0.1:' + (process.env.BACKEND_PORT || '8080'),
     },
   },
 });

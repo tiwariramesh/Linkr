@@ -1,9 +1,14 @@
 import z from 'zod';
 
-export type CreateUserType = {
+export type RegisterType = {
   username: string;
+  email: string;
   password: string;
   confirm_password: string;
+};
+
+export type DeleteAccountType = {
+  password: string;
 };
 
 export type LoginType = {
@@ -16,11 +21,13 @@ export type UpdateUsernameType = {
 };
 
 export type UserType = {
-  id: number;
+  id: string;
   username: string;
+  email: string;
 };
 
 export type UpdatePasswordType = {
+  current_password: string;
   password: string;
   confirm_password: string;
 };

@@ -1,5 +1,5 @@
 {
-  "name": "faved",
+  "name": "linkr-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "dev": "vite",
-    "build": "npm run format:check && npm run lint && tsc -b && vite build",
+    "build": "tsc -b && vite build",
+    "check": "npm run format:check && npm run lint",
+    "typecheck": "tsc -b",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -50,7 +52,8 @@
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.61.1",
     "react-resizable-panels": "^4.7.1",
-    "react-router-dom": "^6.30.1",
+    "react-router": "^7.18.5",
+    "react-router-dom": "^7.18.5",
     "react-spinners": "^0.17.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",

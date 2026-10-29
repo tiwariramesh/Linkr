@@ -319,6 +319,7 @@ export function SidebarTag({
     if (isChildTagSelected !== true || isChildTagSelected === isCollapsibleOpen) {
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsCollapsibleOpen(isChildTagSelected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isChildTagSelected]);
@@ -327,6 +328,7 @@ export function SidebarTag({
     if (childTagsMatchSearch !== true || childTagsMatchSearch === isCollapsibleOpen) {
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsCollapsibleOpen(childTagsMatchSearch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childTagsMatchSearch]);

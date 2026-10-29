@@ -1,0 +1,22 @@
+{
+  "name": "linkr",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Linkr: organise your ideas. Self-hosted links and notes, synced across your devices.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "frontend",
+    "server"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.ts",
+    "build": "npm run build -w frontend",
+    "start": "npm run start -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w frontend",
+    "db:generate": "npm run db:generate -w server"
+  }
+}

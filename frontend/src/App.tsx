@@ -3,8 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { useContext, useEffect } from 'react';
 import { StoreContext } from './store/storeContext';
 import { Login } from './pages/Login.tsx';
-import { Setup } from './pages/Setup.tsx';
-import { SetupAuth } from './pages/SetupAuth.tsx';
+import { Register } from './pages/Register.tsx';
 import { SetupImport } from './pages/SetupImport.tsx';
 import { SetupIntegrations } from './pages/SetupIntegrations.tsx';
 import { Toaster } from './components/ui/sonner';
@@ -19,18 +18,17 @@ const InitMiddleware = observer(() => {
   const store = useContext(StoreContext);
 
   useEffect(() => {
-    // If request was successful even with no user data, it means that setup and auth are not required, so we can set them to false
+    // A 401 marks auth as required; any other failure (e.g. server unreachable) also lands on the sign-in page.
     const loadData = async () => {
-      const response = await store.getUser(true);
-      if (response !== null) {
-        store.setIsSetupRequired(false);
-        store.setIsAuthRequired(false);
+      const signedIn = await store.getUser(true);
+      if (!signedIn && store.isAuthRequired === null) {
+        store.setIsAuthRequired(true);
       }
     };
     loadData();
   }, [store]);
 
-  if (store.isSetupRequired === null || store.isAuthRequired === null) {
+  if (store.isAuthRequired === null) {
     return (
       <div className="bg-background flex h-full min-h-screen w-full flex-col items-center justify-center">
         <Spinner className="h-10 w-10" />
@@ -56,40 +54,22 @@ const AuthMiddleware = observer(() => {
   return <Outlet />;
 });
 
-const SetupMiddleware = observer(() => {
-  const store = useContext(StoreContext);
-
-  // If we are not on the setup page while DB is not initialized, redirect to setup
-  if (store.isSetupRequired) {
-    return <Navigate to="/setup" replace />;
-  }
-
-  // Otherwise continue
-  return <Outlet />;
-});
-
 const router = createBrowserRouter([
   {
     element: <InitMiddleware />,
     children: [
+      { path: '/login', element: <Login /> },
+      { path: '/register', element: <Register /> },
       {
-        element: <SetupMiddleware />,
+        element: <AuthMiddleware />,
         children: [
-          { path: '/login', element: <Login /> },
-          {
-            element: <AuthMiddleware />,
-            children: [
-              { path: '/', element: <ItemList /> },
-              { path: '/setup/auth', element: <SetupAuth /> },
-              { path: '/setup/import', element: <SetupImport /> },
-              { path: '/setup/integrations', element: <SetupIntegrations /> },
-              { path: '/create-item', element: <CreateItem /> },
-              { path: '/edit-item/:itemID', element: <EditItem /> },
-            ],
-          },
+          { path: '/', element: <ItemList /> },
+          { path: '/setup/import', element: <SetupImport /> },
+          { path: '/setup/integrations', element: <SetupIntegrations /> },
+          { path: '/create-item', element: <CreateItem /> },
+          { path: '/edit-item/:itemID', element: <EditItem /> },
         ],
       },
-      { path: '/setup', element: <Setup />, id: 'setup' },
     ],
   },
   { path: '*', element: <NotFound /> },

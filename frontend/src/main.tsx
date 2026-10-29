@@ -11,7 +11,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <StoreContext.Provider value={mainStore}>
       <PreferencesStoreContext.Provider value={preferencesStore}>
-        <ThemeProvider defaultTheme="system" storageKey="faved-ui-theme">
+        <ThemeProvider defaultTheme="system" storageKey="linkr-ui-theme">
           <App />
         </ThemeProvider>
       </PreferencesStoreContext.Provider>

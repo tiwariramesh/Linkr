@@ -13,11 +13,14 @@ import { Spinner } from '@/components/ui/spinner.tsx';
 
 const formSchema = z
   .object({
-    password: z.string().min(6, {
-      message: 'Password must be at least 6 characters.',
+    current_password: z.string().min(1, {
+      message: 'Enter your current password.',
     }),
-    confirm_password: z.string().min(6, {
-      message: 'Password must be at least 6 characters.',
+    password: z.string().min(8, {
+      message: 'Password must be at least 8 characters.',
+    }),
+    confirm_password: z.string().min(8, {
+      message: 'Password must be at least 8 characters.',
     }),
   })
   .refine((data) => data.password === data.confirm_password, {
@@ -31,6 +34,7 @@ export function UserPasswordEdit() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      current_password: '',
       password: '',
       confirm_password: '',
     },
@@ -54,12 +58,25 @@ export function UserPasswordEdit() {
           <CardContent className="flex flex-col gap-4">
             <FormField
               control={form.control}
+              name="current_password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="Current password" autoComplete="current-password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>New Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Password" autoComplete="new-password" {...field} />
+                    <Input type="password" placeholder="New password" autoComplete="new-password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -70,9 +87,9 @@ export function UserPasswordEdit() {
               name="confirm_password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel>Confirm New Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Confirm Password" autoComplete="new-password" {...field} />
+                    <Input type="password" placeholder="Confirm new password" autoComplete="new-password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -14,7 +14,7 @@ export const SetupIntegrations = () => {
 
   return (
     <Onboarding currentStepIndex={1}>
-      <SettingsIntegrations onSuccess={handleSuccess} source="setup" />
+      <SettingsIntegrations onSuccess={handleSuccess} />
 
       <>
         {isInstalled ? (

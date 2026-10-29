@@ -63,22 +63,6 @@ export const saveLayoutColumnVisibilityPreference = (layout: LayoutType, columnV
   }
 };
 
-export const getCookie = (name: string) => {
-  // Add a semicolon to the beginning of the cookie string to handle the first cookie
-  const cookieString = '; ' + document.cookie;
-
-  // Split the string at the specified cookie name
-  const parts = cookieString.split('; ' + name + '=');
-
-  // If the cookie was found (the array has more than one part)
-  if (parts.length === 2) {
-    // Return the value, which is everything after the '=' and before the next ';'
-    return parts.pop().split(';').shift();
-  }
-  // If the cookie was not found
-  return null;
-};
-
 export const safeDecodeURIComponent = (encodedURI: string): string => {
   try {
     return encodedURI ? decodeURIComponent(encodedURI) : '';
@@ -95,12 +79,11 @@ export const safeDecodeURI = (encodedURI: string): string => {
   }
 };
 
-export const buildGoLinkURL = (path: string, params?: Record<string, string>) => {
-  const utmParams = new URLSearchParams({
-    utm_source: 'web_app',
-    utm_medium: 'in_app',
-    ...params,
-  });
-
-  return `https://faved.dev/go/${path}?${utmParams.toString()}`;
+// Timestamps arrive as UTC ISO strings; show them in the viewer's local time.
+export const formatDateTime = (value: string | null | undefined): string => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };

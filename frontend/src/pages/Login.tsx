@@ -7,13 +7,13 @@ import z from 'zod';
 import { useContext, useEffect } from 'react';
 import { StoreContext } from '@/store/storeContext';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../components/ui/form';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { Auth } from '@/layouts/Auth.tsx';
 import { Spinner } from '@/components/ui/spinner.tsx';
 
 const formSchema = z.object({
-  username: z.string().min(1, { message: 'Username is required' }),
+  username: z.string().trim().min(1, { message: 'Username or email is required' }),
   password: z.string().min(1, { message: 'Password is required' }),
 });
 export const Login = observer(() => {
@@ -53,7 +53,7 @@ export const Login = observer(() => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Sign in to your account</CardTitle>
-                <CardDescription>Enter your username and password below</CardDescription>
+                <CardDescription>Enter your username or email and your password</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-6 pb-3 text-left">
@@ -62,9 +62,14 @@ export const Login = observer(() => {
                     name="username"
                     render={({ field }) => (
                       <FormItem className="gap-3">
-                        <FormLabel>Username</FormLabel>
+                        <FormLabel>Username or email</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your username" autoComplete="username" {...field} />
+                          <Input
+                            placeholder="Enter your username or email"
+                            autoComplete="username"
+                            autoCapitalize="none"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -79,7 +84,12 @@ export const Login = observer(() => {
                           <FormLabel>Password</FormLabel>
                         </div>
                         <FormControl>
-                          <Input type="password" autoComplete="password" placeholder="Enter your password" {...field} />
+                          <Input
+                            type="password"
+                            autoComplete="current-password"
+                            placeholder="Enter your password"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -89,6 +99,14 @@ export const Login = observer(() => {
                     {form.formState.isSubmitting && <Spinner />}
                     Sign in
                   </Button>
+                  {store.appInfo?.registration_open !== false && (
+                    <p className="text-muted-foreground text-center text-sm">
+                      New to Linkr?{' '}
+                      <Link to="/register" className="text-foreground font-medium underline underline-offset-4">
+                        Create an account
+                      </Link>
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

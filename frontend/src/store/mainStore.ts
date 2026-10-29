@@ -2,26 +2,26 @@ import { makeAutoObservable } from 'mobx';
 import { toast } from 'sonner';
 import { API_ENDPOINTS } from './api';
 import {
-  CreateUserType,
   ItemType,
   LoginType,
+  RegisterType,
   TagFilterType,
   TagsObjectType,
   TagType,
+  DeleteAccountType,
   UpdatePasswordType,
   UpdateUsernameType,
   UserType,
 } from '@/lib/types.ts';
-import { getCookie } from '@/lib/utils.ts';
 import { preferencesStore } from './preferencesStore.ts';
+import { clientId, SyncConnection, SyncEntity } from './sync.ts';
 
 class MainStore {
   prefStore: typeof preferencesStore;
   items: ItemType[] = [];
-  tags: TagsObjectType = [];
+  tags: TagsObjectType = {};
   user: UserType | null = null;
-  isAuthRequired = null;
-  isSetupRequired = null;
+  isAuthRequired: boolean | null = null;
   isSettingsModalOpen: boolean = false;
   preSelectedItemSettingsModal: string | null = null;
   tagFilter: TagFilterType = null; // Default to null for no tag selected. 'none' for without any tags
@@ -31,14 +31,23 @@ class MainStore {
     installed_version: string | null;
     latest_version: string | null;
     update_available: boolean | null;
+    registration_open: boolean;
   } | null = null;
   keepBulkActionsToolbar = false;
+  sync: SyncConnection;
 
   constructor(prefStore) {
     this.prefStore = prefStore;
-    makeAutoObservable(this); // Makes state observable and actions transactional
+    this.sync = new SyncConnection(this.onRemoteChange);
+    makeAutoObservable(this, { sync: false }); // Makes state observable and actions transactional
     this.getAppInfo();
   }
+
+  // Another device (or tab) changed data: pull the fresh copy.
+  onRemoteChange = (entities: SyncEntity[]) => {
+    if (entities.includes('tags')) this.fetchTags();
+    if (entities.includes('items')) this.fetchItems();
+  };
 
   runRequest = (
     endpoint: string,
@@ -52,7 +61,7 @@ class MainStore {
       method: method,
       headers: {
         Accept: 'application/json',
-        'X-CSRF-TOKEN': getCookie('CSRF-TOKEN'),
+        'X-Linkr-Client': clientId,
       },
     };
 
@@ -69,11 +78,7 @@ class MainStore {
           return response.json();
         }
 
-        if (response.status === 424) {
-          this.setIsSetupRequired(true);
-          this.setIsAuthRequired(false);
-        } else if (response.status === 401) {
-          this.setIsSetupRequired(false);
+        if (response.status === 401) {
           this.setIsAuthRequired(true);
         }
 
@@ -96,9 +101,6 @@ class MainStore {
 
         return null;
       });
-  };
-  setIsSetupRequired = (val: boolean) => {
-    this.isSetupRequired = val;
   };
   setTagFilter = (val: TagFilterType) => {
     this.tagFilter = val;
@@ -133,10 +135,19 @@ class MainStore {
 
   setUser = (user: UserType) => {
     this.user = user;
+    this.isAuthRequired = false;
+    this.sync.start();
   };
 
+  // Forget everything belonging to the previous account.
   unsetUser = () => {
+    this.sync.stop();
     this.user = null;
+    this.items = [];
+    this.tags = {};
+    this.tagFilter = null;
+    this.isSettingsModalOpen = false;
+    this.isAuthRequired = true;
   };
   setTags = (tags: TagsObjectType) => {
     const renderTagSegment = (tag: TagType) => {
@@ -176,6 +187,7 @@ class MainStore {
   }
   setIsAuthRequired = (val: boolean) => {
     this.isAuthRequired = val;
+    if (val) this.sync.stop();
   };
   fetchTags = async () => {
     return this.runRequest(API_ENDPOINTS.tags.list, 'GET', {}, 'Error fetching tags').then((data) => {
@@ -366,11 +378,7 @@ class MainStore {
       true,
       noErrorEmit
     );
-    if (response === null) {
-      return null;
-    }
-
-    if (!response?.data?.user) {
+    if (response === null || !response?.data?.user) {
       return false;
     }
 
@@ -378,8 +386,8 @@ class MainStore {
     return true;
   };
 
-  createUser = async (values: CreateUserType) => {
-    const response = await this.runRequest(API_ENDPOINTS.settings.create, 'POST', values, 'Failed to create user');
+  register = async (values: RegisterType) => {
+    const response = await this.runRequest(API_ENDPOINTS.auth.register, 'POST', values, 'Failed to create account');
 
     if (response === null || !response?.data?.user) {
       return false;
@@ -418,20 +426,20 @@ class MainStore {
     return true;
   };
 
-  deleteUser = () => {
-    return this.runRequest(API_ENDPOINTS.settings.delete, 'DELETE', {}, 'Failed to delete user').then((response) => {
-      if (response === null) {
-        return;
-      }
-      this.unsetUser();
-    });
+  deleteAccount = async (values: DeleteAccountType) => {
+    const response = await this.runRequest(API_ENDPOINTS.settings.delete, 'DELETE', values, 'Failed to delete account');
+    if (response === null) {
+      return false;
+    }
+    this.unsetUser();
+    return true;
   };
   logOut = () => {
     return this.runRequest(API_ENDPOINTS.auth.logout, 'POST', {}, 'Failed to log out').then((response) => {
       if (response === null) {
         return;
       }
-      this.setIsAuthRequired(true);
+      this.unsetUser();
     });
   };
 
@@ -442,18 +450,7 @@ class MainStore {
       return;
     }
 
-    this.setIsAuthRequired(false);
     this.setUser(response.data.user);
-  };
-  initializeDatabase = async () => {
-    return this.runRequest(API_ENDPOINTS.setup.setup, 'POST', {}, 'Failed to initialize database').then((response) => {
-      if (response === null) {
-        return false;
-      }
-      this.setIsAuthRequired(false);
-      this.setIsSetupRequired(false);
-      return true;
-    });
   };
   importPocketBookmarks = async (selectedFile: File) => {
     return await this.importBookmarks(selectedFile, 'pocket-zip', API_ENDPOINTS.importBookmarks.pocket);

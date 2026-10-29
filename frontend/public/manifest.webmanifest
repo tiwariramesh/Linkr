@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "Faved Bookmarks",
-  "short_name": "Faved",
-  "description": "Faved: links and bookmarks management.",
+  "name": "Linkr",
+  "short_name": "Linkr",
+  "description": "Linkr: organise your ideas. Links and notes, synced across your devices.",
   "start_url": "./?launcher=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#FF9500",
   "categories": ["productivity", "utilities"],
   "icons": [
     {
@@ -45,13 +45,19 @@
       "src": "/favicons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "/favicons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
     {
       "name": "Add new link",
       "short_name": "Add link",
-      "description": "Add a new link to your bookmarks",
+      "description": "Save a new link to Linkr",
       "url": "/create-item",
       "icons": [
         {

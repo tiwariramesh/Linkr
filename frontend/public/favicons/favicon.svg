@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Linkr icon</title>
+  <desc>Layered yellow and orange ribbon L mark on a transparent background.</desc>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFE600"/>
+      <stop offset="0.58" stop-color="#FFB900"/>
+      <stop offset="1" stop-color="#FF9700"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFC400"/>
+      <stop offset="0.55" stop-color="#FF9500"/>
+      <stop offset="1" stop-color="#FF7000"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF9E00"/>
+      <stop offset="0.55" stop-color="#FF6500"/>
+      <stop offset="1" stop-color="#F04400"/>
+    </linearGradient>
+  </defs>
+  <g>
+    <path fill="url(#gold)" d="M286 48h77L239 333c-15 32 3 62 38 62h92l-34 67h-98c-75 0-119-67-88-132L286 48z"/>
+    <path fill="url(#amber)" d="M326 48h76L279 333c-15 32 3 62 38 62h92l-35 67h-97c-75 0-119-67-88-132L326 48z"/>
+    <path fill="url(#orange)" d="M366 48h76L319 333c-15 32 3 62 38 62h92l-35 67h-97c-75 0-119-67-88-132L366 48z"/>
+  </g>
+</svg>

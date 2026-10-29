@@ -1,2 +1,10 @@
+node_modules/
+frontend/dist/
+
+# Your database, uploaded images and auth secret live here. Back it up; never commit it.
+data/
+
+.env
+*.log
 .idea/
-/vendor/
+.vscode/

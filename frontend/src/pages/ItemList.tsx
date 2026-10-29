@@ -51,6 +51,7 @@ import { BulkActionControls } from '@/components/Table/Controls/BulkActionContro
 import { useUrlState } from '@/hooks/useUrlState.ts';
 import { useItemListState } from '@/hooks/useItemListState.ts';
 import { SidebarToggler } from '@/components/Sidebar/SidebarToggler.tsx';
+import { formatDateTime } from '@/lib/utils.ts';
 
 const columns: ColumnDef<ItemType>[] = [
   {
@@ -165,6 +166,7 @@ const columns: ColumnDef<ItemType>[] = [
   {
     accessorKey: 'created_at',
     header: 'Created date',
+    cell: ({ getValue }) => formatDateTime(getValue() as string),
     enableSorting: true,
     enableHiding: true,
     meta: { class: 'min-w-[170px]' },
@@ -172,6 +174,7 @@ const columns: ColumnDef<ItemType>[] = [
   {
     accessorKey: 'updated_at',
     header: 'Updated date',
+    cell: ({ getValue }) => formatDateTime(getValue() as string),
     enableSorting: true,
     enableHiding: true,
     meta: { class: 'min-w-[170px]' },

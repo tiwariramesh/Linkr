@@ -16,7 +16,7 @@ import { Spinner } from '@/components/ui/spinner.tsx';
 import { Separator } from '@/components/ui/separator.tsx';
 import { DeleteDialog } from '@/components/Table/Controls/DeleteDialog.tsx';
 import { PreviewImage } from '@/components/Table/Fields/PreviewImage.tsx';
-import { safeDecodeURI } from '@/lib/utils.ts';
+import { formatDateTime, safeDecodeURI } from '@/lib/utils.ts';
 import { DuplicatesList } from '@/components/EditItem/DuplicatesList.tsx';
 import { observer } from 'mobx-react-lite';
 
@@ -204,7 +204,9 @@ const EditItemForm = observer(
                 disabled={isDisabled}
                 className={isDisabled ? 'cursor-not-allowed bg-gray-200 text-gray-500' : ''}
                 {...field}
-                value={field.value ?? ''}
+                value={
+                  name === 'created_at' || name === 'updated_at' ? formatDateTime(field.value) : (field.value ?? '')
+                }
               />
             </FormControl>
             <FormMessage />

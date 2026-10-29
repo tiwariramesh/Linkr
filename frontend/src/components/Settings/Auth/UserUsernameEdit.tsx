@@ -14,8 +14,10 @@ import { StoreContext } from '@/store/storeContext.ts';
 const formSchema = z.object({
   username: z
     .string()
-    .min(2, { message: 'Username must be at least 2 characters.' })
-    .max(30, { message: 'Username must be at most 30 characters.' }),
+    .trim()
+    .min(3, { message: 'Username must be at least 3 characters.' })
+    .max(32, { message: 'Username must be at most 32 characters.' })
+    .regex(/^[a-zA-Z0-9_.]+$/, { message: 'Use only letters, numbers, dots and underscores.' }),
 });
 
 export const UserUsernameEdit = () => {

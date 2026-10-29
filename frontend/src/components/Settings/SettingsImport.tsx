@@ -68,7 +68,7 @@ export const SettingsImport = ({ onSuccess }: { onSuccess?: () => void }) => {
     <Card className="touch-pan-y">
       <CardHeader>
         <CardTitle className="text-lg">Import Bookmarks</CardTitle>
-        <CardDescription>Import your bookmarks to Faved.</CardDescription>
+        <CardDescription>Import your bookmarks to Linkr.</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={handleTabChange}>

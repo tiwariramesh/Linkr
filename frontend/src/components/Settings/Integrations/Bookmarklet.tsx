@@ -166,7 +166,7 @@ export const Bookmarklet = ({ onSuccess }: { onSuccess?: () => void }) => {
             }}
           >
             <Move className="h-4 w-4" />
-            Add to Faved
+            Add to Linkr
           </a>
 
           <Button onClick={copyBookmarkletCode} variant="outline" className="w-full gap-2 sm:w-auto">
@@ -226,7 +226,7 @@ export const Bookmarklet = ({ onSuccess }: { onSuccess?: () => void }) => {
                 <TabsContent value="drag" className="space-y-2 pt-4">
                   {[
                     <>
-                      Drag the <b>Add to Faved</b> button above to your browser's Bookmarks Bar to install.
+                      Drag the <b>Add to Linkr</b> button above to your browser's Bookmarks Bar to install.
                     </>,
                     <>
                       Alternatively, if drag-and-drop doesn't work or you prefer not to use the Bookmarks Bar in your
@@ -248,7 +248,7 @@ export const Bookmarklet = ({ onSuccess }: { onSuccess?: () => void }) => {
                     </>,
                     'Add a new bookmark in your browser.',
                     'Paste the copied code in the URL field.',
-                    'Specify a name for the bookmark, for example "Add to Faved".',
+                    'Specify a name for the bookmark, for example "Add to Linkr".',
                     'Save the bookmark.',
                   ].map((text, index) => (
                     <InstallStep key={index} text={text} index={index} />
@@ -268,13 +268,13 @@ export const Bookmarklet = ({ onSuccess }: { onSuccess?: () => void }) => {
             <CollapsibleContent className="space-y-3 p-4">
               {[
                 <>
-                  Click the <b>Add to Faved</b> bookmarklet on any page you'd like to save.
+                  Click the <b>Add to Linkr</b> bookmarklet on any page you'd like to save.
                 </>,
                 'A window will appear, allowing you to add the page to your bookmarks.',
                 <>
                   Optionally, add notes and tags, then click <b>Save</b>.
                 </>,
-                'The page will be stored and available in Faved.',
+                'The page will be stored and available in Linkr.',
               ].map((text, index) => (
                 <InstallStep key={index} text={text} index={index} />
               ))}
@@ -295,7 +295,7 @@ export const Bookmarklet = ({ onSuccess }: { onSuccess?: () => void }) => {
                   extensions, they are lightweight and only access the page when you click them.
                 </p>
                 <p>
-                  Faved bookmarklet allows you to quickly save any webpage to your Faved collection with a single click.
+                  Linkr bookmarklet allows you to quickly save any webpage to your Linkr collection with a single click.
                 </p>
               </div>
               <div className="flex flex-wrap justify-around gap-6 text-sm">

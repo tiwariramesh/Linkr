@@ -18,13 +18,7 @@ import { useInstallExperience } from '@/hooks/use-install-experience';
 import { type InstallEnvironment } from '@/lib/install-env';
 
 type InstallOptionId =
-  | 'ios'
-  | 'android'
-  | 'safari_macos'
-  | 'chrome_desktop'
-  | 'edge_desktop'
-  | 'opera_desktop'
-  | 'firefox_desktop';
+  'ios' | 'android' | 'safari_macos' | 'chrome_desktop' | 'edge_desktop' | 'opera_desktop' | 'firefox_desktop';
 
 type InstallOption = {
   id: InstallOptionId;
@@ -70,7 +64,7 @@ const INSTALL_OPTIONS: InstallOption[] = [
       </>,
       'Confirm the installation in the browser dialog.',
       <>
-        Launch <span className="font-semibold">Faved</span> from your home screen or app drawer.
+        Launch <span className="font-semibold">Linkr</span> from your home screen or app drawer.
       </>,
     ],
     footnote:
@@ -89,7 +83,7 @@ const INSTALL_OPTIONS: InstallOption[] = [
       </>,
       'Confirm the app name and icon in the dialog.',
       <>
-        Launch <span className="font-semibold">Faved</span> from your Dock or Applications folder.
+        Launch <span className="font-semibold">Linkr</span> from your Dock or Applications folder.
       </>,
     ],
     footnote: 'This feature requires macOS Sonoma (Safari 17) or later.',
@@ -105,12 +99,12 @@ const INSTALL_OPTIONS: InstallOption[] = [
       <>
         Alternatively, open the <span className="font-semibold">Chrome menu</span> (three dots) &rarr;{' '}
         <span className="font-semibold">Cast, save and share</span> &rarr;{' '}
-        <span className="font-semibold">Install Faved...</span> or{' '}
+        <span className="font-semibold">Install Linkr...</span> or{' '}
         <span className="font-semibold">Install page as app...</span>
       </>,
       'Confirm the installation in the dialog.',
       <>
-        Launch <span className="font-semibold">Faved</span> from your taskbar, Dock, start menu, or app launcher.
+        Launch <span className="font-semibold">Linkr</span> from your taskbar, Dock, start menu, or app launcher.
       </>,
     ],
   },
@@ -129,7 +123,7 @@ const INSTALL_OPTIONS: InstallOption[] = [
       </>,
       'Confirm the installation in the dialog.',
       <>
-        Launch <span className="font-semibold">Faved</span> from your taskbar, Dock, start menu, or app launcher.
+        Launch <span className="font-semibold">Linkr</span> from your taskbar, Dock, start menu, or app launcher.
       </>,
     ],
   },
@@ -147,7 +141,7 @@ const INSTALL_OPTIONS: InstallOption[] = [
       </>,
       'Confirm the installation in the dialog.',
       <>
-        Launch <span className="font-semibold">Faved</span> from your taskbar, Dock, start menu, or app launcher.
+        Launch <span className="font-semibold">Linkr</span> from your taskbar, Dock, start menu, or app launcher.
       </>,
     ],
   },
@@ -156,8 +150,8 @@ const INSTALL_OPTIONS: InstallOption[] = [
     label: 'Firefox (Desktop)',
     icon: IconBrandFirefox,
     steps: [
-      "Firefox desktop doesn't support PWA installation, but you can still enjoy a seamless experience by using Faved as a regular website.",
-      'For quick access, add a shortcut to Faved on your New Tab page or save it as a bookmark on your Bookmarks Bar.',
+      "Firefox desktop doesn't support PWA installation, but you can still enjoy a seamless experience by using Linkr as a regular website.",
+      'For quick access, add a shortcut to Linkr on your New Tab page or save it as a bookmark on your Bookmarks Bar.',
     ],
   },
 ];
@@ -214,6 +208,7 @@ export function InstallApp() {
   const [activeTab, setActiveTab] = React.useState<InstallOptionId>(defaultTab);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab(defaultTab);
   }, [defaultTab]);
 
@@ -229,7 +224,7 @@ export function InstallApp() {
         <div className="flex flex-1 flex-col gap-1">
           <CardTitle className="text-lg">Install App</CardTitle>
           <CardDescription>
-            Besides being accessible via browser, Faved can also be installed as a Progressive Web App (PWA). Choose
+            Besides being accessible via browser, Linkr can also be installed as a Progressive Web App (PWA). Choose
             your device in <span className="font-semibold">How to install?</span> section below to see installation
             instructions.
           </CardDescription>
@@ -374,7 +369,7 @@ export function InstallApp() {
                 </div>
 
                 <p className="text-muted-foreground mt-4 space-y-2 border-t pt-4 text-xs leading-relaxed">
-                  If installation is not supported, you can still enjoy a great experience by accessing Faved as a
+                  If installation is not supported, you can still enjoy a great experience by accessing Linkr as a
                   regular website and adding it as a bookmark for quick access.
                 </p>
               </div>
@@ -395,7 +390,7 @@ export function InstallApp() {
                   experience with its own icon on the home screen or dock.
                 </p>
                 <p>
-                  By installing Faved, you can launch it quickly without browser toolbars, enjoy more screen space, and
+                  By installing Linkr, you can launch it quickly without browser toolbars, enjoy more screen space, and
                   switch between apps more easily. It uses very little storage and always stays up to date.
                 </p>
               </div>

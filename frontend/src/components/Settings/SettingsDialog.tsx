@@ -18,12 +18,12 @@ export const SettingsDialog = observer(() => {
   const store = React.useContext(StoreContext);
 
   const navLinks = [
-    { id: 'auth', title: 'Authentication', icon: Keyboard, component: <SettingsAuth />, warningMessage: null },
+    { id: 'auth', title: 'Account', icon: Keyboard, component: <SettingsAuth />, warningMessage: null },
     {
       id: 'integrations',
       title: 'Integrations',
       icon: Share2,
-      component: <SettingsIntegrations source="settings" />,
+      component: <SettingsIntegrations />,
       warningMessage: null,
     },
     { id: 'import', title: 'Import', icon: Import, component: <SettingsImport />, warningMessage: null },

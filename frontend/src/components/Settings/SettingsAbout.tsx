@@ -1,55 +1,32 @@
 import { Logo } from '@/components/Logo.tsx';
-import { BookOpen, Bug, ExternalLink, FileText, Lightbulb, Mail, Newspaper, Server } from 'lucide-react';
-import { IconBrandDiscord, IconBrandGithub, IconBrandX } from '@tabler/icons-react';
+import { Bug, ExternalLink, FileText, Heart, Lightbulb } from 'lucide-react';
+import { IconBrandGithub } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import * as React from 'react';
 import { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { StoreContext } from '@/store/storeContext.ts';
-import { buildGoLinkURL } from '@/lib/utils.ts';
 
-const buildLink = (path: string) => {
-  return buildGoLinkURL(path, {
-    utm_campaign: 'about_page_link',
-  });
-};
+const REPO_URL = 'https://github.com/tiwariramesh/Linkr';
 
 const links = [
     {
-      icon: Server,
-      label: 'Faved Cloud',
-      url: buildLink('cloud'),
-      description: 'Secure managed hosting for Faved with automated backups and updates',
-    },
-    {
-      icon: Newspaper,
-      label: 'Blog',
-      url: buildLink('blog'),
-      description: 'Latest news, announcements and tutorials',
-    },
-    {
-      icon: BookOpen,
-      label: 'Documentation',
-      url: buildLink('docs'),
-      description: 'Learn how to use Faved',
+      icon: IconBrandGithub,
+      label: 'Source code',
+      url: REPO_URL,
+      description: 'Linkr is open source. Self-host it, read the code, star the repo',
     },
     {
       icon: FileText,
-      label: 'Changelog',
-      url: buildLink('changelog'),
-      description: 'Stay updated with the latest changes',
+      label: 'Releases',
+      url: `${REPO_URL}/releases`,
+      description: 'What changed in each version, and how to update',
     },
   ],
-  socialLinks = [
-    { icon: IconBrandGithub, label: 'Star on GitHub', url: buildLink('social-github') },
-    { icon: IconBrandX, label: 'Follow on X (Twitter)', url: buildLink('social-x') },
-    { icon: IconBrandDiscord, label: 'Join the Community', url: buildLink('social-discord') },
-  ],
   supportLinks = [
-    { icon: Lightbulb, label: 'Open a feature request', url: buildLink('open-feature-request') },
-    { icon: Bug, label: 'Report a bug', url: buildLink('open-bug-report') },
-    { icon: Mail, label: 'Contact us', url: 'mailto:contact@faved.dev' },
+    { icon: Lightbulb, label: 'Request a feature', url: `${REPO_URL}/issues/new?labels=enhancement` },
+    { icon: Bug, label: 'Report a bug', url: `${REPO_URL}/issues/new?labels=bug` },
   ];
 
 export const SettingsAbout = observer(() => {
@@ -58,8 +35,8 @@ export const SettingsAbout = observer(() => {
   const latestVersion = store.appInfo?.latest_version ?? null;
   const updateAvailable = store.appInfo?.update_available ?? null;
 
-  const releaseNotesURL = buildLink('changelog');
-  const updateDocsUrl = buildLink('docs-update');
+  const releaseNotesURL = `${REPO_URL}/releases`;
+  const updateDocsUrl = `${REPO_URL}#updating`;
 
   useEffect(() => {
     store.getAppInfo();
@@ -78,7 +55,7 @@ export const SettingsAbout = observer(() => {
             if (updateAvailable === true) {
               return <span className="text-yellow-700 dark:text-yellow-400">Latest version: {latestVersion}</span>;
             } else if (updateAvailable === false) {
-              return <span className="text-green-700 dark:text-green-400">Faved is up to date!</span>;
+              return <span className="text-green-700 dark:text-green-400">Linkr is up to date!</span>;
             } else if (latestVersion === null) {
               return <span className="text-muted-foreground">Unable to check for updates</span>;
             } else if (installedVersion === null) {
@@ -157,25 +134,22 @@ export const SettingsAbout = observer(() => {
           </Card>
           <Card className="gap-4">
             <CardHeader>
-              <CardTitle className="text-base sm:text-lg">Stay Connected</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Credits</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-2">
-              {socialLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Button
-                    key={link.label}
-                    variant="outline"
-                    className="flex items-center justify-center gap-2 text-sm"
-                    asChild
-                  >
-                    <a href={link.url} target="_blank" rel="noopener noreferrer">
-                      <Icon className="h-4 w-4" />
-                      <span>{link.label}</span>
-                    </a>
-                  </Button>
-                );
-              })}
+            <CardContent className="text-muted-foreground flex gap-3 text-sm">
+              <Heart className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                Linkr is built on{' '}
+                <a
+                  href="https://github.com/denho/faved"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground underline"
+                >
+                  Faved
+                </a>{' '}
+                by Denis Dvali, an open-source bookmark manager released under the MIT licence.
+              </p>
             </CardContent>
           </Card>
         </div>

@@ -11,7 +11,6 @@ export const API_ENDPOINTS = {
   },
   settings: {
     getUser: `${API_BASE}/settings/user`,
-    create: `${API_BASE}/settings/user`,
     userName: `${API_BASE}/settings/username`,
     password: `${API_BASE}/settings/password`,
     delete: `${API_BASE}/settings/user`,
@@ -26,10 +25,8 @@ export const API_ENDPOINTS = {
   },
   auth: {
     login: `${API_BASE}/auth/login`,
+    register: `${API_BASE}/auth/register`,
     logout: `${API_BASE}/auth/logout`,
-  },
-  setup: {
-    setup: `${API_BASE}/setup/database`,
   },
   importBookmarks: {
     pocket: `${API_BASE}/import/pocket`,

@@ -1,34 +1,24 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Only the latest release receives security updates. Please upgrade to the latest version before reporting an issue.
+Only the latest release receives security fixes. Please update before reporting an issue.
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-**Please report security issues privately — do not open a public issue, pull request, or discussion.**
+**Please report security issues privately. Do not open a public issue, pull request or discussion.**
 
-- **Preferred:** GitHub private vulnerability reporting — open the repository's **Security** tab and choose **"Report a vulnerability"** (https://github.com/denho/faved/security/advisories/new).
-- **Alternatively:** email **security@faved.to**.
+Use GitHub's private vulnerability reporting: open this repository's **Security** tab and choose **Report a vulnerability** (https://github.com/tiwariramesh/Linkr/security/advisories/new).
 
-Please include what you can:
+Include what you can:
 
 - the affected version or commit;
-- the component/endpoint involved and a description of the issue;
-- reproduction steps or a proof of concept;
-- your assessment of the impact.
+- the component or endpoint involved, and what goes wrong;
+- steps to reproduce, or a proof of concept;
+- your view of the impact.
 
-## What to Expect
-
-- **Acknowledgement** within **2 business days**.
-- We confirm the issue, assess severity, and keep you updated on progress.
-- Fixes are shipped in a new release and disclosed via a **GitHub Security Advisory**, with a **CVE** requested where warranted.
-- We **credit reporters** in the advisory by default — tell us if you'd prefer to remain anonymous.
-
-## Coordinated Disclosure
-
-Please give us reasonable time to release a fix before disclosing publicly. We aim to resolve and publish an advisory within **90 days** and will coordinate the timing with you.
+Fixes ship in a new release and are disclosed in a GitHub Security Advisory. Reporters are credited unless they ask not to be.
 
 ## Scope
 
-This policy covers the Faved application code in this repository. Vulnerabilities in third-party dependencies should be reported upstream.
+This policy covers the Linkr code in this repository. Report vulnerabilities in third-party dependencies to their maintainers.

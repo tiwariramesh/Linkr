@@ -8,7 +8,7 @@ interface SetupWrapperProps extends React.ComponentProps<'div'> {
 }
 
 const steps = [
-  { title: 'Set Up Authentication', url: '/setup/auth' },
+  { title: 'Create Account', url: null },
   { title: 'Install Apps & Extensions', url: '/setup/integrations' },
   { title: 'Import Bookmarks', url: '/setup/import' },
 ];
@@ -25,13 +25,13 @@ export const Onboarding = ({ currentStepIndex, children }: SetupWrapperProps) =>
               <React.Fragment key={index}>
                 <div
                   className={`flex flex-col items-center transition-all duration-200 ${
-                    currentStepIndex > index
+                    currentStepIndex > index && step.url
                       ? 'cursor-pointer'
                       : currentStepIndex === index
                         ? 'cursor-default'
                         : 'cursor-default opacity-50'
                   }`}
-                  onClick={() => currentStepIndex > index && navigate(step.url)}
+                  onClick={() => currentStepIndex > index && step.url && navigate(step.url)}
                 >
                   <div
                     className={`mb-2 flex h-8 w-8 items-center justify-center rounded-full ${
