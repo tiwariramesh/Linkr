@@ -81,19 +81,23 @@ export function assertHttpUrl(raw: string): URL {
 
 export async function safeFetch(raw: string, accept: string): Promise<Response> {
   const url = assertHttpUrl(raw);
-  try {
-    return await fetch(url, {
-      dispatcher: agent,
-      redirect: 'follow',
-      signal: AbortSignal.timeout(20_000),
-      headers: { 'user-agent': USER_AGENT, accept, 'accept-language': 'en;q=0.9,*;q=0.5' },
-    });
-  } catch (err) {
-    const cause = (err as { cause?: { code?: string } }).cause;
-    if (cause?.code === 'EBLOCKED') {
-      throw new HttpError(422, 'This address cannot be fetched');
+  // Home connections drop the odd connection attempt; one quick retry saves marking a good link as failed.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetch(url, {
+        dispatcher: agent,
+        redirect: 'follow',
+        signal: AbortSignal.timeout(20_000),
+        headers: { 'user-agent': USER_AGENT, accept, 'accept-language': 'en;q=0.9,*;q=0.5' },
+      });
+    } catch (err) {
+      const cause = (err as { cause?: { code?: string } }).cause;
+      if (cause?.code === 'EBLOCKED') {
+        throw new HttpError(422, 'This address cannot be fetched');
+      }
+      if (attempt >= 2) throw new HttpError(502, `Could not reach ${url.hostname}`);
+      await new Promise((resolve) => setTimeout(resolve, 750));
     }
-    throw new HttpError(502, `Could not reach ${url.hostname}`);
   }
 }
 

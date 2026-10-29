@@ -1,4 +1,4 @@
-import type { ColorName } from './types';
+import type { ColorName, HighlightColor } from './types';
 
 // Full class names (not built from parts) so Tailwind can see them.
 export const COLORS: Record<ColorName, { label: string; dot: string; text: string; soft: string; ring: string }> = {
@@ -79,3 +79,13 @@ export const FOLDER_ICONS = [
   '✅',
   '🚀',
 ];
+
+// Highlight colours: the swatch shown in menus and lists. The marks themselves are styled in index.css.
+export const HIGHLIGHT_COLORS: Record<HighlightColor, { label: string; swatch: string; border: string }> = {
+  yellow: { label: 'Yellow', swatch: 'bg-yellow-300', border: 'border-yellow-400' },
+  green: { label: 'Green', swatch: 'bg-green-300', border: 'border-green-400' },
+  blue: { label: 'Blue', swatch: 'bg-blue-300', border: 'border-blue-400' },
+  pink: { label: 'Pink', swatch: 'bg-pink-300', border: 'border-pink-400' },
+  purple: { label: 'Purple', swatch: 'bg-purple-300', border: 'border-purple-400' },
+};
+export const HIGHLIGHT_COLOR_NAMES = Object.keys(HIGHLIGHT_COLORS) as HighlightColor[];

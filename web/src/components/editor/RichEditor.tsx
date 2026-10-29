@@ -1,3 +1,4 @@
+import { Highlight } from '@tiptap/extension-highlight';
 import { Image } from '@tiptap/extension-image';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Youtube } from '@tiptap/extension-youtube';
@@ -9,6 +10,7 @@ import {
   Code2,
   Heading2,
   Heading3,
+  Highlighter,
   Italic,
   Link2,
   List,
@@ -153,6 +155,7 @@ function Toolbar({ editor, folderId }: { editor: Editor; folderId: string | null
       h3: e.isActive('heading', { level: 3 }),
       bold: e.isActive('bold'),
       italic: e.isActive('italic'),
+      highlight: e.isActive('highlight'),
       bullets: e.isActive('bulletList'),
       numbers: e.isActive('orderedList'),
       tasks: e.isActive('taskList'),
@@ -189,6 +192,12 @@ function Toolbar({ editor, folderId }: { editor: Editor; folderId: string | null
       />
       <ToolButton icon={Bold} label="Bold" active={is.bold} onClick={() => chain().toggleBold().run()} />
       <ToolButton icon={Italic} label="Italic" active={is.italic} onClick={() => chain().toggleItalic().run()} />
+      <ToolButton
+        icon={Highlighter}
+        label="Highlight"
+        active={is.highlight}
+        onClick={() => chain().toggleHighlight().run()}
+      />
       <span className="bg-border mx-1 h-4 w-px shrink-0" />
       <ToolButton
         icon={List}
@@ -272,6 +281,7 @@ export function RichEditor({
         link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
       }),
       Placeholder.configure({ placeholder }),
+      Highlight,
       TaskList,
       TaskItem.configure({ nested: true }),
       Image,

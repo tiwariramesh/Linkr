@@ -185,6 +185,35 @@ export const itemContent = sqliteTable('item_content', {
   fetchedAt: text('fetched_at').notNull(),
 });
 
+// Highlights on an item's reader copy, each with an optional comment.
+// The passage is found again by its text (quote plus a little context either side), with `start` (its
+// character offset in the article text) to choose between repeats: the same approach as the W3C Web
+// Annotation text-quote and text-position selectors, so highlights survive small changes to the page.
+export const highlights = sqliteTable(
+  'highlights',
+  {
+    id: text('id').primaryKey(),
+    spaceId: text('space_id')
+      .notNull()
+      .references(() => spaces.id, { onDelete: 'cascade' }),
+    itemId: text('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    quote: text('quote').notNull(),
+    prefix: text('prefix').notNull().default(''),
+    suffix: text('suffix').notNull().default(''),
+    start: integer('start').notNull().default(0),
+    color: text('color', { enum: ['yellow', 'green', 'blue', 'pink', 'purple'] })
+      .notNull()
+      .default('yellow'),
+    comment: text('comment').notNull().default(''),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => [index('highlights_item_idx').on(t.itemId), index('highlights_space_idx').on(t.spaceId)]
+);
+
 // Uploaded files. The bytes live on disk at data/files/<itemId>/<fileId>.
 export const files = sqliteTable(
   'files',
@@ -241,7 +270,7 @@ export const changes = sqliteTable(
   {
     seq: integer('seq').primaryKey({ autoIncrement: true }),
     spaceId: text('space_id').notNull(),
-    entity: text('entity', { enum: ['space', 'folder', 'item', 'tag'] }).notNull(),
+    entity: text('entity', { enum: ['space', 'folder', 'item', 'tag', 'highlight'] }).notNull(),
     entityId: text('entity_id').notNull(),
     op: text('op', { enum: ['upsert', 'delete'] }).notNull(),
     actorId: text('actor_id'),

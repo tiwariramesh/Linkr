@@ -1,7 +1,7 @@
 import { rectSortingStrategy, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Check } from 'lucide-react';
-import type { MouseEvent } from 'react';
+import { Check, Highlighter } from 'lucide-react';
+import { useMemo, type MouseEvent } from 'react';
 import type { DragData } from '@/components/dnd/dnd';
 import { Favicon, ItemMenu, ItemThumb, TagChips } from '@/components/items/ItemParts';
 import { itemSubtitle, openItem } from '@/lib/items';
@@ -41,12 +41,20 @@ function SortableItem({
   layout,
   reorderable,
   selecting,
+  highlightCount,
 }: {
   item: Item;
   layout: Layout;
   reorderable: boolean;
   selecting: boolean;
+  highlightCount: number;
 }) {
+  const highlightBadge = highlightCount > 0 && (
+    <span className="flex shrink-0 items-center gap-0.5" title={`${highlightCount} highlights`}>
+      <Highlighter className="size-3" />
+      {highlightCount}
+    </span>
+  );
   const selected = useStore((state) => state.selection.includes(item.id));
   const data: DragData = { type: 'item', itemId: item.id };
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
@@ -92,6 +100,7 @@ function SortableItem({
         <span className="text-muted-foreground hidden w-24 shrink-0 text-right text-xs md:block">
           {timeAgo(item.createdAt)}
         </span>
+        <span className="text-muted-foreground w-8 text-xs">{highlightBadge}</span>
         <ItemMenu item={item} className="opacity-0 group-hover:opacity-100 aria-expanded:opacity-100" />
       </div>
     );
@@ -121,6 +130,7 @@ function SortableItem({
           <Favicon item={item} className="size-3.5" />
           <span className="truncate">{subtitle}</span>
           <span className="shrink-0">· {timeAgo(item.createdAt)}</span>
+          {highlightBadge && <span className="ml-auto">{highlightBadge}</span>}
         </div>
       </div>
       <div className="absolute top-2 left-2">
@@ -136,6 +146,12 @@ function SortableItem({
 
 export function ItemsView({ items, layout, reorderable }: { items: Item[]; layout: Layout; reorderable: boolean }) {
   const selecting = useStore((state) => state.selection.length > 0);
+  const highlights = useStore((state) => state.highlights);
+  const highlightCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const h of Object.values(highlights)) counts.set(h.itemId, (counts.get(h.itemId) ?? 0) + 1);
+    return counts;
+  }, [highlights]);
   return (
     <SortableContext
       items={items.map((item) => item.id)}
@@ -145,7 +161,14 @@ export function ItemsView({ items, layout, reorderable }: { items: Item[]; layou
         className={layout === 'cards' ? 'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4' : 'flex flex-col'}
       >
         {items.map((item) => (
-          <SortableItem key={item.id} item={item} layout={layout} reorderable={reorderable} selecting={selecting} />
+          <SortableItem
+            key={item.id}
+            item={item}
+            layout={layout}
+            reorderable={reorderable}
+            selecting={selecting}
+            highlightCount={highlightCounts.get(item.id) ?? 0}
+          />
         ))}
       </div>
     </SortableContext>

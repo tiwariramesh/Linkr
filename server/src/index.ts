@@ -16,6 +16,7 @@ import { accountRoutes, publicAccountRoutes } from './routes/account.ts';
 import { appInfoRoutes } from './routes/app-info.ts';
 import { fileRoutes } from './routes/files.ts';
 import { folderRoutes } from './routes/folders.ts';
+import { highlightRoutes } from './routes/highlights.ts';
 import { importRoutes } from './routes/imports.ts';
 import { itemRoutes } from './routes/items.ts';
 import { spaceRoutes } from './routes/spaces.ts';
@@ -62,6 +63,7 @@ api.route('/', folderRoutes);
 api.route('/', itemRoutes);
 api.route('/', fileRoutes);
 api.route('/', tagRoutes);
+api.route('/', highlightRoutes);
 api.route('/', importRoutes);
 api.all('*', () => {
   throw new HttpError(404, 'Not found');

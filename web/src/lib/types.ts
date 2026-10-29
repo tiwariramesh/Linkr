@@ -71,7 +71,26 @@ export type Item = {
 
 export type Tag = { id: string; spaceId: string; parentId: string | null; title: string; color: ColorName | null };
 
-export type Snapshot = { seq: number; folders: Folder[]; items: Item[]; tags: Tag[] };
+export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'purple';
+
+// A passage marked in an item's reader copy. It is found again by its text: `quote` with a little
+// `prefix` and `suffix` context, and `start` (its offset in the article text) to choose between repeats.
+export type Highlight = {
+  id: string;
+  spaceId: string;
+  itemId: string;
+  quote: string;
+  prefix: string;
+  suffix: string;
+  start: number;
+  color: HighlightColor;
+  comment: string;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Snapshot = { seq: number; folders: Folder[]; items: Item[]; tags: Tag[]; highlights: Highlight[] };
 
 export type ChangeSet = {
   seq: number;
@@ -79,7 +98,8 @@ export type ChangeSet = {
   folders: Folder[];
   items: Item[];
   tags: Tag[];
-  deleted: { folders: string[]; items: string[]; tags: string[] };
+  highlights: Highlight[];
+  deleted: { folders: string[]; items: string[]; tags: string[]; highlights: string[] };
 };
 
 export type AppInfo = {

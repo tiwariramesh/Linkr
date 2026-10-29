@@ -17,6 +17,7 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 - **Capture anywhere.** Drop files, photos, videos or PDFs anywhere in the app, or onto a folder in the sidebar, to upload them there. Links and text dragged in from other windows are saved too, and Ctrl+V with no text box focused saves whatever is on the clipboard. On a phone, use the paperclip.
 - **Split view.** Click any card to open it beside its notes. Videos play (YouTube, Vimeo or uploaded), PDFs and images open in place, and web pages show live when the site allows it, or as a clean reader copy saved when the link was added. Step through a folder with ← and →; Esc goes back.
 - **Rich notes.** Every item has notes, and every folder has session notes, open beside the items or in the split view. Headings, lists, checklists, quotes and links; paste a YouTube link to embed the player, or paste or drop an image to add it. Notes save as you type and update live on your other devices.
+- **Highlights and comments.** In a page's reader view, select text to highlight it in one of five colours, with a comment if you like. Highlights are listed beside the page, and every highlight in a folder gathers in its notes panel as a recap of the session, ready to copy as Markdown. They're stored with their surrounding words, so they find their place again even if the page's layout changes.
 - **Command palette.** Press Ctrl+K (⌘K on a Mac) to search every item and folder, jump anywhere, save a link or note, or upload files without touching the mouse.
 - **Drag and drop.** Drag cards onto any folder in the sidebar, reorder them by hand, and drag folders to nest or reorder them. Select several with Ctrl/Cmd-click and move them together.
 - **Live sync.** Open Linkr on your laptop, phone and tablet: a change on one appears on the others in well under a second.
@@ -29,7 +30,7 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 1. ~~Spaces, folders, sessions, drag and drop, live sync~~ (done)
 2. ~~Capture anywhere: drop files and images, paste anywhere, command palette (Ctrl+K)~~ (done)
 3. ~~Split view: preview pages, videos and PDFs beside rich session notes~~ (done)
-4. Highlights and annotations on saved articles
+4. ~~Highlights and annotations on saved articles~~ (done)
 5. Across terms: "run again" templates, where a link was used before, presenter mode, full-text search
 6. Shared spaces with roles, notifications, and read-only pages to share a session with students
 7. Chrome extension (save to the current session, tab groups ↔ sessions), then AI with your choice of Claude, OpenAI, OpenRouter or Ollama

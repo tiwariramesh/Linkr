@@ -1,107 +1,16 @@
-import DOMPurify from 'dompurify';
-import { BookOpen, Download, ExternalLink, Globe, Loader2 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { BookOpen, Download, Loader2 } from 'lucide-react';
+import { Message } from '@/components/preview/Message';
+import { Reader } from '@/components/preview/Reader';
 import { Button } from '@/components/ui/button';
-import { api, ApiError } from '@/lib/api';
 import { videoEmbedUrl } from '@/lib/embed';
 import { formatBytes } from '@/lib/format';
-import { fileUrl, KIND_ICON, openInNewTab } from '@/lib/items';
+import { fileUrl } from '@/lib/items';
 import type { Item } from '@/lib/types';
 
 export type LinkMode = 'live' | 'reader';
 
 // Pages that allow framing open live; the rest open as their saved reader copy.
 export const defaultMode = (item: Item): LinkMode => (item.frameable ? 'live' : 'reader');
-
-type ReaderCopy = { html: string; byline: string | null; words: number; fetchedAt: string };
-
-// Reader copies come from other sites: keep only plain article markup, and make links open in a new tab.
-DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-  if (node.tagName === 'A') {
-    node.setAttribute('target', '_blank');
-    node.setAttribute('rel', 'noopener noreferrer');
-  }
-  if (node.tagName === 'IMG') {
-    node.setAttribute('referrerpolicy', 'no-referrer');
-    node.setAttribute('loading', 'lazy');
-  }
-});
-const sanitize = (html: string) =>
-  DOMPurify.sanitize(html, {
-    FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'svg', 'math'],
-    FORBID_ATTR: ['style', 'class', 'id'],
-  });
-
-function Message({ item, text, children }: { item: Item; text: string; children?: ReactNode }) {
-  const Icon = KIND_ICON[item.kind];
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-      <Icon className="text-muted-foreground/60 size-10" />
-      <p className="text-muted-foreground max-w-sm text-sm">{text}</p>
-      <div className="flex flex-wrap justify-center gap-2">
-        {children}
-        {(item.url || item.file?.id) && (
-          <Button variant="outline" size="sm" onClick={() => openInNewTab(item)}>
-            <ExternalLink /> Open in new tab
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Reader({ item, onLive }: { item: Item; onLive: () => void }) {
-  const [state, setState] = useState<{ copy?: ReaderCopy; error?: string; loading: boolean }>({ loading: true });
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .get<ReaderCopy>(`/items/${item.id}/content`)
-      .then((copy) => !cancelled && setState({ copy: { ...copy, html: sanitize(copy.html) }, loading: false }))
-      .catch(
-        (error) =>
-          !cancelled && setState({ error: error instanceof ApiError ? error.message : 'Failed', loading: false })
-      );
-    return () => {
-      cancelled = true;
-    };
-    // A new fetch (e.g. after "Refresh preview") brings a new reader copy.
-  }, [item.id, item.fetchStatus]);
-
-  if (state.loading) {
-    return (
-      <div className="text-muted-foreground flex h-full items-center justify-center gap-2 text-sm">
-        <Loader2 className="size-4 animate-spin" /> Making a reader copy…
-      </div>
-    );
-  }
-  if (!state.copy) {
-    return (
-      <Message
-        item={item}
-        text="There’s no reader copy of this page: it has little text to read, or couldn’t be fetched."
-      >
-        {item.frameable !== false && (
-          <Button variant="outline" size="sm" onClick={onLive}>
-            <Globe /> Show the live page
-          </Button>
-        )}
-      </Message>
-    );
-  }
-  const minutes = Math.max(1, Math.round(state.copy.words / 230));
-  return (
-    <div className="h-full overflow-y-auto">
-      <article className="prose prose-sm sm:prose-base dark:prose-invert mx-auto max-w-2xl px-6 py-8">
-        <p className="text-muted-foreground not-prose mb-2 text-xs">
-          {item.siteName}
-          {state.copy.byline && ` · ${state.copy.byline}`} · {minutes} min read
-        </p>
-        <h1>{item.title}</h1>
-        <div dangerouslySetInnerHTML={{ __html: state.copy.html }} />
-      </article>
-    </div>
-  );
-}
 
 // The item itself: a player, viewer, the live page or its reader copy.
 export function Preview({

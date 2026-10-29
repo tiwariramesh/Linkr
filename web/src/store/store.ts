@@ -5,7 +5,18 @@ import { api, ApiError, setUnauthorizedHandler } from '@/lib/api';
 import { extractUrls, hostOf } from '@/lib/format';
 import { newId } from '@/lib/ids';
 import { childFolders, itemsInFolder } from '@/lib/tree';
-import type { AppInfo, ChangeSet, Folder, Item, Snapshot, Space, Tag, User } from '@/lib/types';
+import type {
+  AppInfo,
+  ChangeSet,
+  Folder,
+  Highlight,
+  HighlightColor,
+  Item,
+  Snapshot,
+  Space,
+  Tag,
+  User,
+} from '@/lib/types';
 
 type State = {
   authStatus: 'loading' | 'signedOut' | 'signedIn';
@@ -19,10 +30,11 @@ type State = {
   folders: Record<string, Folder>;
   items: Record<string, Item>;
   tags: Record<string, Tag>;
+  highlights: Record<string, Highlight>;
   selection: string[];
 };
 
-const empty = { spaceId: null, seq: 0, folders: {}, items: {}, tags: {}, selection: [] };
+const empty = { spaceId: null, seq: 0, folders: {}, items: {}, tags: {}, highlights: {}, selection: [] };
 
 export const useStore = create<State>(() => ({
   authStatus: 'loading',
@@ -142,6 +154,7 @@ export async function openSpace(spaceId: string, force = false) {
       folders: byId(snapshot.folders),
       items: byId(snapshot.items),
       tags: byId(snapshot.tags),
+      highlights: byId(snapshot.highlights),
       loading: false,
     });
   } catch (error) {
@@ -185,6 +198,13 @@ export function catchUp(): Promise<void> {
         folders: { ...without(state.folders, changes.deleted.folders), ...byId(keep(changes.folders)) },
         items: { ...without(state.items, changes.deleted.items), ...byId(keep(changes.items)) },
         tags: { ...without(state.tags, changes.deleted.tags), ...byId(keep(changes.tags)) },
+        // Highlights go with their item when it's deleted for good, without a change of their own.
+        highlights: Object.fromEntries(
+          Object.entries({
+            ...without(state.highlights, changes.deleted.highlights),
+            ...byId(keep(changes.highlights)),
+          }).filter(([, highlight]) => !changes.deleted.items.includes(highlight.itemId))
+        ),
         selection: state.selection.filter((id) => !changes.deleted.items.includes(id)),
       }));
     } while (catchUpAgain);
@@ -494,6 +514,56 @@ export async function deleteTag(id: string) {
     ),
   }));
   await save([id], () => api.delete(`/tags/${id}`));
+}
+
+// ---- Highlights ----
+
+export type NewHighlight = Pick<Highlight, 'itemId' | 'quote' | 'prefix' | 'suffix' | 'start'> &
+  Partial<Pick<Highlight, 'color' | 'comment'>>;
+
+export async function createHighlight(input: NewHighlight): Promise<Highlight | undefined> {
+  const { spaceId, user } = get();
+  if (!spaceId) return;
+  const now = new Date().toISOString();
+  const highlight: Highlight = {
+    id: newId(),
+    spaceId,
+    color: 'yellow',
+    comment: '',
+    createdBy: user?.id ?? null,
+    createdAt: now,
+    updatedAt: now,
+    ...input,
+  };
+  set((state) => ({ highlights: { ...state.highlights, [highlight.id]: highlight } }));
+  const saved = await save(
+    [highlight.id],
+    () => api.post('/highlights', { id: highlight.id, ...input }).then(() => true),
+    () => set((state) => ({ highlights: without(state.highlights, [highlight.id]) }))
+  );
+  return saved ? highlight : undefined;
+}
+
+export async function updateHighlight(id: string, patch: { color?: HighlightColor; comment?: string }) {
+  const before = get().highlights[id];
+  if (!before) return;
+  set((state) => ({ highlights: { ...state.highlights, [id]: { ...before, ...patch } } }));
+  await save(
+    [id],
+    () => api.patch(`/highlights/${id}`, patch),
+    () => set((state) => ({ highlights: { ...state.highlights, [id]: before } }))
+  );
+}
+
+export async function deleteHighlight(id: string) {
+  const before = get().highlights[id];
+  if (!before) return;
+  set((state) => ({ highlights: without(state.highlights, [id]) }));
+  await save(
+    [id],
+    () => api.delete(`/highlights/${id}`),
+    () => set((state) => ({ highlights: { ...state.highlights, [id]: before } }))
+  );
 }
 
 // ---- Selection ----

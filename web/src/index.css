@@ -174,3 +174,57 @@
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+
+/* Highlights in reader copies (colours match HIGHLIGHT_COLORS) and in notes */
+mark {
+  color: inherit;
+  border-radius: 2px;
+  background: rgb(253 224 71 / 0.55);
+}
+mark[data-highlight-id] {
+  cursor: pointer;
+  padding: 0.05em 0;
+}
+mark[data-color='green'] {
+  background: rgb(134 239 172 / 0.6);
+}
+mark[data-color='blue'] {
+  background: rgb(147 197 253 / 0.6);
+}
+mark[data-color='pink'] {
+  background: rgb(249 168 212 / 0.6);
+}
+mark[data-color='purple'] {
+  background: rgb(216 180 254 / 0.6);
+}
+.dark mark {
+  background: rgb(250 204 21 / 0.35);
+}
+.dark mark[data-color='green'] {
+  background: rgb(74 222 128 / 0.3);
+}
+.dark mark[data-color='blue'] {
+  background: rgb(96 165 250 / 0.35);
+}
+.dark mark[data-color='pink'] {
+  background: rgb(244 114 182 / 0.35);
+}
+.dark mark[data-color='purple'] {
+  background: rgb(192 132 252 / 0.35);
+}
+mark[data-comment] {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+mark.flash {
+  animation: highlight-flash 1.5s ease-out;
+}
+@keyframes highlight-flash {
+  0%,
+  60% {
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}

@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { FolderHeader } from '@/components/folders/FolderHeader';
+import { FolderHighlights } from '@/components/highlights/HighlightList';
 import { QuickAdd, SelectionBar, SubfolderTiles } from '@/components/folders/FolderPageParts';
 import { ItemsView } from '@/components/items/ItemsView';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { readInboxView, saveInboxView } from '@/lib/inbox-view';
 import { childFolders, folderStatus, itemCounts, itemsInFolder } from '@/lib/tree';
 import type { FolderView, Item, SortMode, Tag } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { restoreFolder, setSelection, updateFolder, useStore } from '@/store/store';
 import { showSessionNotes, useUi } from '@/store/ui';
 
@@ -54,6 +56,7 @@ function FolderContents() {
   const allItems = useStore((state) => state.items);
   const tags = useStore((state) => state.tags);
   const notesOpen = useUi((state) => state.sessionNotesOpen);
+  const [panelTab, setPanelTab] = useState<'notes' | 'highlights'>('notes');
   const [inboxView, setInboxView] = useState(readInboxView);
   const [query, setQuery] = useState('');
 
@@ -211,16 +214,38 @@ function FolderContents() {
       {showNotes && (
         // Beside the items on wide screens; over them on small ones.
         <aside className="bg-background fixed inset-0 z-40 flex flex-col lg:static lg:z-auto lg:w-[420px] lg:shrink-0 lg:border-l">
-          <div className="flex items-center justify-between border-b py-1 pr-1 pl-4">
-            <p className="truncate text-sm font-medium">Session notes</p>
+          <div className="flex items-center justify-between border-b pr-1 pl-2">
+            <div className="flex gap-1 pt-2" role="tablist">
+              {(['notes', 'highlights'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={panelTab === tab}
+                  onClick={() => setPanelTab(tab)}
+                  className={cn(
+                    '-mb-px border-b-2 px-3 pb-2 text-sm font-medium',
+                    panelTab === tab
+                      ? 'border-primary text-foreground'
+                      : 'text-muted-foreground hover:text-foreground border-transparent'
+                  )}
+                >
+                  {tab === 'notes' ? 'Session notes' : 'Highlights'}
+                </button>
+              ))}
+            </div>
             <Button variant="ghost" size="icon-sm" onClick={() => showSessionNotes(false)} aria-label="Close notes">
               <X />
             </Button>
           </div>
           <div className="min-h-0 flex-1">
-            <Suspense>
-              <SessionNotes folder={folder} />
-            </Suspense>
+            {panelTab === 'notes' ? (
+              <Suspense>
+                <SessionNotes folder={folder} />
+              </Suspense>
+            ) : (
+              <FolderHighlights folder={folder} />
+            )}
           </div>
         </aside>
       )}

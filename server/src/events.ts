@@ -5,7 +5,7 @@ import { memberIds } from './lib/access.ts';
 // Every write records which rows it touched in the `changes` log, then pings the space's members.
 // Their devices fetch everything after the last sequence number they saw.
 
-export type Entity = 'space' | 'folder' | 'item' | 'tag';
+export type Entity = 'space' | 'folder' | 'item' | 'tag' | 'highlight';
 export type Change = { entity: Entity; id: string; op?: 'upsert' | 'delete' };
 export type SpaceEvent = { spaceId: string; seq: number };
 

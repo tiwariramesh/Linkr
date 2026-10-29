@@ -1,12 +1,13 @@
 import { and, desc, eq, gt, inArray, max } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { changes, files, folders, items, itemTags, spaceMembers, spaces, tags } from '../db/schema.ts';
+import { changes, files, folders, highlights, items, itemTags, spaceMembers, spaces, tags } from '../db/schema.ts';
 
 type ItemRow = typeof items.$inferSelect;
 type FolderRow = typeof folders.$inferSelect;
 type TagRow = typeof tags.$inferSelect;
 type SpaceRow = typeof spaces.$inferSelect;
 type FileRow = typeof files.$inferSelect;
+type HighlightRow = typeof highlights.$inferSelect;
 
 // ---- Wire format (what the web app receives) ----
 
@@ -72,6 +73,21 @@ export const tagWire = (tag: TagRow) => ({
   parentId: tag.parentId,
   title: tag.title,
   color: tag.color,
+});
+
+export const highlightWire = (highlight: HighlightRow) => ({
+  id: highlight.id,
+  spaceId: highlight.spaceId,
+  itemId: highlight.itemId,
+  quote: highlight.quote,
+  prefix: highlight.prefix,
+  suffix: highlight.suffix,
+  start: highlight.start,
+  color: highlight.color,
+  comment: highlight.comment,
+  createdBy: highlight.createdBy,
+  createdAt: highlight.createdAt,
+  updatedAt: highlight.updatedAt,
 });
 
 function tagIdsFor(itemIds: string[]) {
@@ -146,6 +162,7 @@ export function spaceSnapshot(spaceId: string) {
     folders: db.select().from(folders).where(eq(folders.spaceId, spaceId)).all().map(folderWire),
     items: itemsWire(db.select().from(items).where(eq(items.spaceId, spaceId)).orderBy(desc(items.createdAt)).all()),
     tags: db.select().from(tags).where(eq(tags.spaceId, spaceId)).all().map(tagWire),
+    highlights: db.select().from(highlights).where(eq(highlights.spaceId, spaceId)).all().map(highlightWire),
   };
 }
 
@@ -156,13 +173,22 @@ export function changesSince(spaceId: string, since: number) {
     .from(changes)
     .where(and(eq(changes.spaceId, spaceId), gt(changes.seq, since)))
     .all();
-  const ids = { space: [] as string[], folder: [] as string[], item: [] as string[], tag: [] as string[] };
+  const ids = {
+    space: [] as string[],
+    folder: [] as string[],
+    item: [] as string[],
+    tag: [] as string[],
+    highlight: [] as string[],
+  };
   for (const row of touched) ids[row.entity].push(row.id);
 
   const found = {
     folders: ids.folder.length ? db.select().from(folders).where(inArray(folders.id, ids.folder)).all() : [],
     items: ids.item.length ? db.select().from(items).where(inArray(items.id, ids.item)).all() : [],
     tags: ids.tag.length ? db.select().from(tags).where(inArray(tags.id, ids.tag)).all() : [],
+    highlights: ids.highlight.length
+      ? db.select().from(highlights).where(inArray(highlights.id, ids.highlight)).all()
+      : [],
   };
   const missing = (requested: string[], rows: { id: string }[]) => {
     const present = new Set(rows.map((row) => row.id));
@@ -176,10 +202,12 @@ export function changesSince(spaceId: string, since: number) {
     folders: found.folders.map(folderWire),
     items: itemsWire(found.items),
     tags: found.tags.map(tagWire),
+    highlights: found.highlights.map(highlightWire),
     deleted: {
       folders: missing(ids.folder, found.folders),
       items: missing(ids.item, found.items),
       tags: missing(ids.tag, found.tags),
+      highlights: missing(ids.highlight, found.highlights),
     },
   };
 }

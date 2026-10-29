@@ -293,6 +293,49 @@ describe('Linkr API', () => {
     assert.equal((await call('GET', `/api/items/${note.id}/content`)).status, 404, 'notes have no reader copy');
   });
 
+  test('highlights sync through the change log, stay private to the space and go with their item', async () => {
+    const { call, spaceId } = await signUp('highlighter');
+    const outsider = await signUp('peeker');
+    const item = (await call('POST', '/api/items', { spaceId, kind: 'note', notes: 'An article' })).body;
+    const before = (await call('GET', `/api/spaces/${spaceId}/snapshot`)).body.seq;
+
+    const created = await call('POST', '/api/highlights', {
+      itemId: item.id,
+      quote: 'testing beats re-reading',
+      prefix: 'Research shows that ',
+      suffix: ' for long-term recall',
+      start: 120,
+    });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    const highlight = created.body;
+    assert.deepEqual([highlight.color, highlight.comment, highlight.start], ['yellow', '', 120]);
+    assert.equal((await call('POST', '/api/highlights', { itemId: item.id, quote: '' })).status, 422);
+    assert.equal((await call('POST', '/api/highlights', { itemId: item.id, quote: 'x', color: 'red' })).status, 422);
+
+    const edited = (await call('PATCH', `/api/highlights/${highlight.id}`, { color: 'green', comment: 'Ask why' }))
+      .body;
+    assert.deepEqual([edited.color, edited.comment, edited.quote], ['green', 'Ask why', 'testing beats re-reading']);
+    const delta = (await call('GET', `/api/spaces/${spaceId}/changes?since=${before}`)).body;
+    assert.deepEqual(
+      delta.highlights.map((h: { id: string }) => h.id),
+      [highlight.id]
+    );
+
+    // Other accounts can neither see nor change them, nor highlight items they can't reach.
+    assert.equal((await outsider.call('PATCH', `/api/highlights/${highlight.id}`, { comment: 'hi' })).status, 404);
+    assert.equal((await outsider.call('DELETE', `/api/highlights/${highlight.id}`)).status, 404);
+    assert.equal((await outsider.call('POST', '/api/highlights', { itemId: item.id, quote: 'x' })).status, 404);
+
+    const second = (await call('POST', '/api/highlights', { itemId: item.id, quote: 'second' })).body;
+    assert.equal((await call('DELETE', `/api/highlights/${second.id}`)).status, 204);
+    const afterDelete = (await call('GET', `/api/spaces/${spaceId}/changes?since=${before}`)).body;
+    assert.deepEqual(afterDelete.deleted.highlights, [second.id]);
+
+    await call('POST', '/api/items/trash', { ids: [item.id] });
+    await call('POST', '/api/items/purge', { ids: [item.id] });
+    assert.equal((await call('GET', `/api/spaces/${spaceId}/snapshot`)).body.highlights.length, 0);
+  });
+
   test('deleting an account removes its Personal space and everything in it', async () => {
     const { call, spaceId } = await signUp('leaver');
     await call('POST', '/api/items', { spaceId, kind: 'note', notes: 'bye' });

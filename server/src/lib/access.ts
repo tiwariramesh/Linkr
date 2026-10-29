@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db/client.ts';
-import { folders, items, spaceMembers, tags } from '../db/schema.ts';
+import { folders, highlights, items, spaceMembers, tags } from '../db/schema.ts';
 import { HttpError } from '../http.ts';
 
 export type Role = 'owner' | 'editor' | 'viewer';
@@ -40,6 +40,13 @@ export function loadItem(userId: string, itemId: string, minimum: Role) {
   if (!item) throw new HttpError(404, 'Item not found');
   requireRole(userId, item.spaceId, minimum);
   return item;
+}
+
+export function loadHighlight(userId: string, highlightId: string, minimum: Role) {
+  const highlight = db.select().from(highlights).where(eq(highlights.id, highlightId)).get();
+  if (!highlight) throw new HttpError(404, 'Highlight not found');
+  requireRole(userId, highlight.spaceId, minimum);
+  return highlight;
 }
 
 export function loadTag(userId: string, tagId: string, minimum: Role) {

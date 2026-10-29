@@ -8,8 +8,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ItemNotes, SessionNotes } from '@/components/editor/Notes';
+import { ItemHighlights } from '@/components/highlights/HighlightList';
 import { Favicon, ItemMenu } from '@/components/items/ItemParts';
 import { defaultMode, Preview, type LinkMode } from '@/components/preview/Preview';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import { itemsInFolder } from '@/lib/tree';
 import type { Folder, Item } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/store/store';
+import { focusHighlight, useUi } from '@/store/ui';
 
 const SPLIT_KEY = 'linkr-split';
 const clampSplit = (value: number) => Math.min(0.75, Math.max(0.3, value));
@@ -89,8 +91,15 @@ function Divider({ split, onChange }: { split: number; onChange: (split: number,
 
 function NotesPane({ item, folder }: { item: Item; folder: Folder | undefined }) {
   // A note's own text is in the left pane, so here it's the session notes.
+  const highlightCount = useStore(
+    (s) => Object.values(s.highlights).filter((highlight) => highlight.itemId === item.id).length
+  );
   const tabs = [
     ...(item.kind !== 'note' ? [{ id: 'item', label: 'Notes' }] : []),
+    // Highlights are made in a page's reader copy.
+    ...(item.kind === 'link'
+      ? [{ id: 'highlights', label: `Highlights${highlightCount ? ` ${highlightCount}` : ''}` }]
+      : []),
     ...(folder ? [{ id: 'session', label: 'Session notes' }] : []),
   ];
   const [tab, setTab] = useState(tabs[0]?.id);
@@ -115,13 +124,19 @@ function NotesPane({ item, folder }: { item: Item; folder: Folder | undefined })
           >
             {t.label}
             {t.id === 'session' && folder && (
-              <span className="text-muted-foreground font-normal"> · {folder.title}</span>
+              <span className="text-muted-foreground hidden font-normal xl:inline"> · {folder.title}</span>
             )}
           </button>
         ))}
       </div>
       <div className="min-h-0 flex-1">
-        {current === 'item' ? <ItemNotes item={item} /> : folder && <SessionNotes folder={folder} />}
+        {current === 'item' ? (
+          <ItemNotes item={item} />
+        ) : current === 'highlights' ? (
+          <ItemHighlights item={item} />
+        ) : (
+          folder && <SessionNotes folder={folder} />
+        )}
       </div>
     </div>
   );
@@ -142,6 +157,20 @@ function ItemView() {
   const [mode, setMode] = useState<LinkMode>(() => (item ? defaultMode(item) : 'reader'));
   const [split, setSplit] = useState(readSplit);
   const [mobilePane, setMobilePane] = useState<'preview' | 'notes'>('preview');
+  const [searchParams] = useSearchParams();
+  const focusId = useUi((s) => s.focusHighlightId);
+
+  // Opened from a folder's highlights (?h=id): go to that highlight.
+  useEffect(() => {
+    const id = searchParams.get('h');
+    if (id) focusHighlight(id);
+  }, [searchParams]);
+
+  // Highlights only exist in the reader view, so picking one switches to it (and to the preview on phones).
+  if (focusId && item?.kind === 'link' && (mode !== 'reader' || mobilePane !== 'preview')) {
+    setMode('reader');
+    setMobilePane('preview');
+  }
   const backTo = folder ? `/s/${spaceId}/f/${folder.id}` : `/s/${spaceId}`;
   const backRef = useRef(backTo);
 
@@ -263,7 +292,7 @@ function ItemView() {
             size="sm"
             value={mode}
             onValueChange={(value) => value && setMode(value as LinkMode)}
-            className="hidden sm:flex"
+            className="flex"
           >
             <ToggleGroupItem value="live" aria-label="Live page" title="Live page">
               <Globe /> <span className="hidden lg:inline">Live</span>
