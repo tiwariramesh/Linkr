@@ -11,6 +11,7 @@ const ArchivePage = lazy(() => import('@/pages/ArchivePage').then((m) => ({ defa
 const ItemPage = lazy(() => import('@/pages/ItemPage').then((m) => ({ default: m.ItemPage })));
 const PresentPage = lazy(() => import('@/pages/PresentPage').then((m) => ({ default: m.PresentPage })));
 const PublicPage = lazy(() => import('@/pages/PublicPage').then((m) => ({ default: m.PublicPage })));
+const StyleguidePage = lazy(() => import('@/pages/StyleguidePage').then((m) => ({ default: m.StyleguidePage })));
 const TrashPage = lazy(() => import('@/pages/TrashPage').then((m) => ({ default: m.TrashPage })));
 
 function Splash() {
@@ -94,6 +95,15 @@ const router = createBrowserRouter([
         ],
       },
     ],
+  },
+  // The design system, live (design/README.md is the written guide). No sign-in, no data.
+  {
+    path: '/styleguide',
+    element: (
+      <Suspense>
+        <StyleguidePage />
+      </Suspense>
+    ),
   },
   // Folders shared with a link: no sign-in.
   {

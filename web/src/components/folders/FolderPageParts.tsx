@@ -174,7 +174,7 @@ function FolderTile({ folder, count }: { folder: Folder; count: number }) {
       to={`/s/${folder.spaceId}/f/${folder.id}`}
       data-drop-folder={folder.id}
       className={cn(
-        'bg-card hover:bg-muted/50 data-[file-over]:ring-primary data-[file-over]:bg-primary/5 flex items-center gap-3 rounded-xl border p-3 transition data-[file-over]:ring-2',
+        'bg-card hover:bg-muted/50 data-[file-over]:ring-primary data-[file-over]:bg-primary/5 flex items-center gap-3 rounded-xl border p-3 shadow-xs transition data-[file-over]:ring-2',
         isOver && dragging && 'ring-primary bg-primary/5 ring-2'
       )}
     >

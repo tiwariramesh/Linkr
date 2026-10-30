@@ -37,7 +37,7 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 3. ~~Split view: preview pages, videos and PDFs beside rich session notes~~ (done)
 4. ~~Highlights and annotations on saved articles~~ (done)
 5. ~~Across terms: "run again" templates, where a link was used before, presenter mode, full-text search~~ (done)
-6. ~~Shared spaces with roles, notifications, and read-only pages to share a session with students; Notion-style notes, folder covers and descriptions~~ (done)
+6. ~~Shared spaces with roles, notifications, and read-only pages to share a session with students; Notion-style notes, folder covers and descriptions; a documented design system~~ (done)
 7. Chrome extension (save to the current session, tab groups ↔ sessions), then AI with your choice of Claude, OpenAI, OpenRouter or Ollama
 
 ## Run it
@@ -105,9 +105,12 @@ This starts the API server on port 8080 (restarting on changes) and the web app 
 | `server/`         | Hono API on Node 24, run straight from TypeScript. SQLite via Drizzle ORM, accounts via Better Auth                     |
 | `server/drizzle/` | Database migrations, applied automatically on start. After editing `server/src/db/schema.ts`, run `npm run db:generate` |
 | `server/test/`    | API tests against a real server and a throwaway database                                                                |
+| `design/`         | The design system (tokens, components, principles) and brand assets. See it live at `/styleguide` in the running app    |
 
 Before sending a change: `npm run typecheck`, `npm run lint` and `npm test`.
 
 ## Credits
+
+The design system draws on the Notion, Precision Light, Lumen Dark and Linear systems in [better-design](https://github.com/marvkr/better-design) (MIT).
 
 Linkr began as a fork of [Faved](https://github.com/denho/faved) by Denis Dvali, and its bookmark importers follow Faved's approach. Both are released under the [MIT licence](LICENSE).

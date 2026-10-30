@@ -114,7 +114,7 @@ function SortableItem({
       {...listeners}
       onClick={onClick}
       className={cn(
-        'group bg-card relative flex cursor-pointer flex-col overflow-hidden rounded-xl border outline-none transition-shadow hover:shadow-md',
+        'group bg-card relative flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-xs outline-none transition-shadow duration-(--duration-base) ease-(--ease-out-soft) hover:shadow-md',
         selected && 'ring-primary ring-2',
         isDragging && 'opacity-40'
       )}
