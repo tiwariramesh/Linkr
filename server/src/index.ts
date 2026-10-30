@@ -12,11 +12,13 @@ import { migrateDatabase } from './db/client.ts';
 import { errorResponse, HttpError, type AppEnv } from './http.ts';
 import { resumePendingFetches } from './lib/link-queue.ts';
 import { purgeOldTrash } from './lib/maintenance.ts';
+import { bearerToken, userForToken } from './lib/tokens.ts';
 import { accountRoutes, publicAccountRoutes } from './routes/account.ts';
 import { appInfoRoutes } from './routes/app-info.ts';
 import { fileRoutes } from './routes/files.ts';
 import { folderRoutes } from './routes/folders.ts';
 import { highlightRoutes } from './routes/highlights.ts';
+import { extensionRoutes } from './routes/extension.ts';
 import { importRoutes } from './routes/imports.ts';
 import { itemRoutes } from './routes/items.ts';
 import { publicRoutes } from './routes/public.ts';
@@ -33,8 +35,10 @@ const app = new Hono<AppEnv>();
 app.onError(errorResponse);
 
 // Browsers send Origin on every state-changing request; refuse ones from sites we don't serve.
+// Token requests (the browser extension) are exempt: a token is never sent automatically, so another
+// site can't forge one.
 app.use('/api/*', async (c, next) => {
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method) && !bearerToken(c.req.header('authorization'))) {
     const origin = c.req.header('origin');
     if (origin && !config.trustedOrigins.includes(origin)) {
       const host = c.req.header('host');
@@ -49,9 +53,18 @@ app.use('/api/*', async (c, next) => {
 app.use('*', secureHeaders({ crossOriginResourcePolicy: 'same-origin', referrerPolicy: 'same-origin' }));
 
 const requireUser = createMiddleware<AppEnv>(async (c, next) => {
+  const token = bearerToken(c.req.header('authorization'));
+  if (token) {
+    const user = userForToken(token);
+    if (!user) throw new HttpError(401, 'This browser was disconnected from Linkr. Connect it again.');
+    c.set('user', user);
+    c.set('via', 'token');
+    return next();
+  }
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) throw new HttpError(401, 'Please sign in');
   c.set('user', session.user);
+  c.set('via', 'session');
   await next();
 });
 
@@ -69,6 +82,7 @@ api.route('/', tagRoutes);
 api.route('/', highlightRoutes);
 api.route('/', sharingRoutes);
 api.route('/', importRoutes);
+api.route('/', extensionRoutes);
 api.all('*', () => {
   throw new HttpError(404, 'Not found');
 });

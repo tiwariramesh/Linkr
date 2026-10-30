@@ -57,6 +57,13 @@
       "when": 1793283699406,
       "tag": "0007_sharing",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793347470171,
+      "tag": "0008_extension_tokens",
+      "breakpoints": true
     }
   ]
 }

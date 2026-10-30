@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
+/* The same tokens as the web app: one design system for both. */
+@import '../../../web/src/theme.css';
+/* The shared components live in the web app. */
+@source '../../../web/src/components/ui';
+
+html,
+body {
+  width: 380px;
+  min-height: 120px;
+  max-height: 600px;
+}
+body {
+  overflow-x: hidden;
+}

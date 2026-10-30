@@ -10,16 +10,18 @@
   },
   "workspaces": [
     "web",
-    "server"
+    "server",
+    "extension"
   ],
   "scripts": {
     "dev": "node scripts/dev.ts",
-    "build": "npm run build -w web",
+    "build": "npm run build -w web && npm run build -w extension",
     "start": "npm run start -w server",
     "test": "npm test -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web && npm run typecheck -w extension",
     "lint": "npm run lint -w web",
-    "db:generate": "npm run db:generate -w server"
+    "db:generate": "npm run db:generate -w server",
+    "build:extension": "npm run build -w extension"
   },
   "devDependencies": {
     "prettier": "^3.9.10"

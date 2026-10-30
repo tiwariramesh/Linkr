@@ -1,6 +1,6 @@
 # Tokens
 
-All tokens live in `web/src/index.css`. Tailwind exposes the colour roles as `bg-*`, `text-*`,
+All tokens live in `web/src/theme.css`. Tailwind exposes the colour roles as `bg-*`, `text-*`,
 `border-*` and `ring-*` utilities. `.dark` on `<html>` switches the theme; the user picks light, dark
 or system in Settings.
 

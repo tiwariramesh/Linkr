@@ -333,6 +333,23 @@ export const drafts = sqliteTable(
   (t) => [primaryKey({ columns: [t.folderId, t.userId] })]
 );
 
+// Tokens for the browser extension: one per connected browser, revocable from Settings. Only a hash
+// is stored; the token itself is shown to the extension once.
+export const apiTokens = sqliteTable(
+  'api_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    createdAt: text('created_at').notNull(),
+    lastUsedAt: text('last_used_at'),
+  },
+  (t) => [index('api_tokens_user_idx').on(t.userId)]
+);
+
 // Append-only change log. Devices sync by asking for everything after the last `seq` they saw;
 // later phases read it for activity history.
 export const changes = sqliteTable(

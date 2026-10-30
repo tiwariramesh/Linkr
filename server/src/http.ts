@@ -6,6 +6,8 @@ import type { SessionUser } from './auth.ts';
 export type AppEnv = {
   Variables: {
     user: SessionUser;
+    // 'token' for the browser extension, which can't manage tokens or the account.
+    via: 'session' | 'token';
   };
 };
 

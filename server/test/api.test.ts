@@ -672,6 +672,91 @@ describe('Linkr API', () => {
     );
   });
 
+  test('the browser extension connects with a token that saves tabs but cannot manage the account', async () => {
+    const { call, user } = await signUp('extension');
+    const created = await call('POST', '/api/extension/tokens', { name: 'Chrome on Windows' });
+    assert.equal(created.status, 201);
+    const { token, info } = created.body;
+    assert.match(token, /^lk_/);
+    // The extension sends no cookie, and its Origin is chrome-extension://, which the site would refuse.
+    const ext = async (method: string, url: string, body?: unknown, key = token) => {
+      const response = await fetch(BASE + url, {
+        method,
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${key}`,
+          origin: 'chrome-extension://abcdefghijklmnop',
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      const text = await response.text();
+      return { status: response.status, body: text ? JSON.parse(text) : null };
+    };
+
+    const state = (await ext('GET', '/api/extension/state')).body;
+    assert.equal(state.user.username, user.username);
+    const spaceId = state.spaces[0].id;
+
+    // A tab group becomes a session folder, in tab order, without duplicates.
+    const a = 'https://example.com/one';
+    const b = 'https://example.com/two#part';
+    const saved = await ext('POST', '/api/extension/tabs', {
+      spaceId,
+      newFolder: { title: 'Week 1', color: 'blue', sessionDate: '2026-11-03' },
+      tabs: [
+        { url: a, title: 'One' },
+        { url: b, title: 'Two' },
+        { url: a, title: 'One again' },
+      ],
+    });
+    assert.equal(saved.status, 201, JSON.stringify(saved.body));
+    assert.equal(saved.body.saved, 2);
+    const group = (await ext('GET', `/api/extension/folders/${saved.body.folderId}/tabs`)).body;
+    assert.deepEqual([group.folder.title, group.folder.color], ['Week 1', 'blue']);
+    assert.deepEqual(
+      group.tabs.map((tab: { url: string }) => tab.url),
+      [a, b]
+    );
+    const state2 = (await ext('GET', '/api/extension/state')).body;
+    assert.equal(state2.folders.find((f: { id: string }) => f.id === saved.body.folderId).sessionDate, '2026-11-03');
+
+    // "Already saved" ignores a trailing slash or #fragment.
+    const found = (await ext('GET', `/api/extension/lookup?url=${encodeURIComponent(a + '/')}`)).body.saved;
+    assert.deepEqual(
+      found.map((hit: { folderId: string }) => hit.folderId),
+      [saved.body.folderId]
+    );
+
+    // Regular saving works with a token too.
+    assert.equal((await ext('POST', '/api/items', { spaceId, kind: 'note', notes: 'From the extension' })).status, 201);
+
+    // But a token can't manage tokens or the account.
+    assert.equal((await ext('GET', '/api/extension/tokens')).status, 403);
+    assert.equal((await ext('POST', '/api/extension/tokens', { name: 'another' })).status, 403);
+    assert.equal(
+      (await ext('PATCH', '/api/me/password', { currentPassword: 'x', newPassword: 'y'.repeat(10) })).status,
+      403
+    );
+    assert.equal((await ext('DELETE', '/api/me', { password: 'password123' })).status, 403);
+    assert.equal((await ext('GET', '/api/extension/state', undefined, 'lk_not-a-real-token')).status, 401);
+
+    // Someone else sees none of it.
+    const other = await signUp('extension_other');
+    assert.notEqual((await other.call('GET', `/api/extension/folders/${saved.body.folderId}/tabs`)).status, 200);
+    assert.deepEqual((await other.call('GET', `/api/extension/lookup?url=${encodeURIComponent(a)}`)).body.saved, []);
+
+    // Disconnecting the browser stops the token at once.
+    assert.deepEqual(
+      (await call('GET', '/api/extension/tokens')).body.map((t: { id: string; lastUsedAt: string | null }) => [
+        t.id,
+        !!t.lastUsedAt,
+      ]),
+      [[info.id, true]]
+    );
+    assert.equal((await call('DELETE', `/api/extension/tokens/${info.id}`)).status, 204);
+    assert.equal((await ext('GET', '/api/extension/state')).status, 401);
+  });
+
   test('deleting an account removes its Personal space and everything in it', async () => {
     const { call, spaceId } = await signUp('leaver');
     await call('POST', '/api/items', { spaceId, kind: 'note', notes: 'bye' });

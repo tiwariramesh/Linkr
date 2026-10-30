@@ -1,5 +1,5 @@
-import { Monitor, Moon, Sun, Upload } from 'lucide-react';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { Monitor, Moon, Puzzle, Sun, Upload } from 'lucide-react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api, ApiError } from '@/lib/api';
 import { setTheme, useTheme, type Theme } from '@/lib/theme';
+import { timeAgo } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { loadSession, logout, openSpace, useStore } from '@/store/store';
 import { closeSettings, useUi } from '@/store/ui';
@@ -192,6 +193,66 @@ function ImportTab() {
   );
 }
 
+type BrowserToken = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
+
+// Browsers connected through the Linkr extension; each has its own token, which can be revoked here.
+function BrowserTab() {
+  const [tokens, setTokens] = useState<BrowserToken[] | null>(null);
+  const load = useCallback(async () => {
+    try {
+      setTokens(await api.get<BrowserToken[]>('/extension/tokens'));
+    } catch {
+      setTokens([]);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const disconnect = async (token: BrowserToken) => {
+    if (!confirm(`Disconnect ${token.name}? Its Linkr extension will stop saving until you connect it again.`)) return;
+    if (await attempt(() => api.delete(`/extension/tokens/${token.id}`), `${token.name} disconnected`)) await load();
+  };
+
+  return (
+    <div className="grid gap-4">
+      <Section
+        title="Linkr extension"
+        description="Save the page you’re on, selected text and whole tab groups from Chrome or Edge, and open any session as a tab group."
+      >
+        <ol className="text-muted-foreground grid list-decimal gap-1 pl-5 text-sm">
+          <li>Install the extension (see “Browser extension” in the README).</li>
+          <li>Click its icon, enter this Linkr’s address and choose Connect.</li>
+          <li>Approve on the Linkr page that opens.</li>
+        </ol>
+      </Section>
+      <Section title="Connected browsers">
+        {tokens === null ? null : tokens.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No browsers connected yet.</p>
+        ) : (
+          <ul className="divide-y rounded-lg border">
+            {tokens.map((token) => (
+              <li key={token.id} className="flex items-center gap-3 px-3 py-2">
+                <Puzzle className="text-muted-foreground size-4 shrink-0" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{token.name}</span>
+                  <span className="text-muted-foreground text-xs">
+                    Connected {timeAgo(token.createdAt)}
+                    {token.lastUsedAt && ` · last used ${timeAgo(token.lastUsedAt)}`}
+                  </span>
+                </span>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => void disconnect(token)}>
+                  Disconnect
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+    </div>
+  );
+}
+
 function AppearanceTab() {
   const theme = useTheme((state) => state.theme);
   const options: [Theme, string, ReactNode][] = [
@@ -267,13 +328,14 @@ export function SettingsDialog() {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription className="sr-only">
-            Account, import, appearance and version information.
+            Account, import, browser extension, appearance and version information.
           </DialogDescription>
         </DialogHeader>
         <Tabs value={tab} onValueChange={(value) => useUi.setState({ settingsTab: value as typeof tab })}>
           <TabsList className="w-full">
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="import">Import</TabsTrigger>
+            <TabsTrigger value="browser">Browser</TabsTrigger>
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="about">About</TabsTrigger>
           </TabsList>
@@ -282,6 +344,9 @@ export function SettingsDialog() {
           </TabsContent>
           <TabsContent value="import" className="mt-4">
             <ImportTab />
+          </TabsContent>
+          <TabsContent value="browser" className="mt-4">
+            <BrowserTab />
           </TabsContent>
           <TabsContent value="appearance" className="mt-4">
             <AppearanceTab />

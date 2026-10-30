@@ -9,6 +9,7 @@ import {
   Monitor,
   Moon,
   Plus,
+  Puzzle,
   Search,
   Settings,
   Sun,
@@ -203,6 +204,9 @@ function UserMenu() {
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => openSettings('import')}>
           <Import /> Import bookmarks
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => openSettings('browser')}>
+          <Puzzle /> Browser extension
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {themes.map(([value, label, icon]) => (

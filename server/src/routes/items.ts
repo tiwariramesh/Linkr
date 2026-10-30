@@ -22,7 +22,7 @@ import { isVideoUrl } from '../lib/metadata.ts';
 import { isValidPosition, itemPositionsAtTop } from '../lib/positions.ts';
 import { colorSchema } from './spaces.ts';
 
-const httpUrl = z
+export const httpUrl = z
   .string()
   .trim()
   .max(4000)

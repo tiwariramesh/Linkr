@@ -4,7 +4,7 @@ import { create } from 'zustand';
 type Ui = {
   editingItemId: string | null;
   settingsOpen: boolean;
-  settingsTab: 'account' | 'import' | 'appearance' | 'about';
+  settingsTab: 'account' | 'import' | 'browser' | 'appearance' | 'about';
   movingItemIds: string[] | null;
   mobileNavOpen: boolean;
   // A just-created folder whose title should be focused for typing.

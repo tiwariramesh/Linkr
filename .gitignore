@@ -8,3 +8,4 @@ data/
 *.log
 .idea/
 .vscode/
+extension/dist/

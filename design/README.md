@@ -5,7 +5,7 @@ quiet motion, and one brand colour (the orange of the Linkr mark) used with inte
 
 | Where                          | What                                                                  |
 | ------------------------------ | --------------------------------------------------------------------- |
-| `web/src/index.css`            | The tokens: every colour, shadow, radius and timing the app uses      |
+| `web/src/theme.css`            | The tokens: every colour, shadow, radius and timing (shared by the app and the browser extension) |
 | `web/src/components/ui/`       | The components (shadcn/ui on Radix), styled from the tokens           |
 | `/styleguide`                  | The system, live in the running app, in light and dark                |
 | [tokens.md](tokens.md)         | Every token: value, purpose, when to use it                           |
@@ -61,7 +61,7 @@ Systems we looked at and left out:
 
 ## Changing the system
 
-1. Change a token in `web/src/index.css`, or a component in `web/src/components/ui/`.
+1. Change a token in `web/src/theme.css`, or a component in `web/src/components/ui/`.
 2. Check `/styleguide` in both themes.
 3. Update [tokens.md](tokens.md) or [components.md](components.md) to match.
 

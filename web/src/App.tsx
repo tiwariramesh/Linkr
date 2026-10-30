@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { createBrowserRouter, Navigate, Outlet, RouterProvider } from 'react-router';
+import { createBrowserRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router';
 import { AppShell } from '@/components/shell/AppShell';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -9,6 +9,9 @@ import { loadAppInfo, loadSession, preferredSpaceId, useStore } from '@/store/st
 
 const ArchivePage = lazy(() => import('@/pages/ArchivePage').then((m) => ({ default: m.ArchivePage })));
 const ItemPage = lazy(() => import('@/pages/ItemPage').then((m) => ({ default: m.ItemPage })));
+const ConnectExtensionPage = lazy(() =>
+  import('@/pages/ConnectExtensionPage').then((m) => ({ default: m.ConnectExtensionPage }))
+);
 const PresentPage = lazy(() => import('@/pages/PresentPage').then((m) => ({ default: m.PresentPage })));
 const PublicPage = lazy(() => import('@/pages/PublicPage').then((m) => ({ default: m.PublicPage })));
 const StyleguidePage = lazy(() => import('@/pages/StyleguidePage').then((m) => ({ default: m.StyleguidePage })));
@@ -22,18 +25,40 @@ function Splash() {
   );
 }
 
-// Signed-in pages; everyone else goes to the sign-in page.
+// Where to go after signing in, when a signed-out visit was sent to the sign-in page.
+const NEXT_KEY = 'linkr-next';
+
+// Signed-in pages; everyone else goes to the sign-in page, and comes back here afterwards.
 function RequireAuth() {
   const status = useStore((state) => state.authStatus);
+  const location = useLocation();
   if (status === 'loading') return <Splash />;
-  if (status === 'signedOut') return <Navigate to="/login" replace />;
+  if (status === 'signedOut') {
+    if (location.pathname !== '/') {
+      try {
+        sessionStorage.setItem(NEXT_KEY, location.pathname + location.search);
+      } catch {
+        // storage blocked: land on the home page instead
+      }
+    }
+    return <Navigate to="/login" replace />;
+  }
   return <Outlet />;
 }
 
 function GuestOnly() {
   const status = useStore((state) => state.authStatus);
   if (status === 'loading') return <Splash />;
-  if (status === 'signedIn') return <Navigate to="/" replace />;
+  if (status === 'signedIn') {
+    let next = '/';
+    try {
+      next = sessionStorage.getItem(NEXT_KEY) ?? '/';
+      sessionStorage.removeItem(NEXT_KEY);
+    } catch {
+      // storage blocked
+    }
+    return <Navigate to={next.startsWith('/') && !next.startsWith('//') ? next : '/'} replace />;
+  }
   return <Outlet />;
 }
 
@@ -54,6 +79,14 @@ const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       { path: '/', element: <Home /> },
+      {
+        path: '/connect-extension',
+        element: (
+          <Suspense>
+            <ConnectExtensionPage />
+          </Suspense>
+        ),
+      },
       {
         path: '/s/:spaceId',
         element: <AppShell />,

@@ -6,6 +6,7 @@ import { config } from '../config.ts';
 import { db } from '../db/client.ts';
 import { items, spaceMembers, spaces, user } from '../db/schema.ts';
 import { HttpError, parseInput, rateLimiter, type AppEnv } from '../http.ts';
+import { requireSession } from './extension.ts';
 import { userSpaces } from '../lib/data.ts';
 import { clearSpaceCovers } from '../lib/covers.ts';
 import { repairOwnerlessSpaces } from './sharing.ts';
@@ -96,6 +97,15 @@ export const publicAccountRoutes = new Hono<AppEnv>()
 // Routes for the signed-in user.
 export const accountRoutes = new Hono<AppEnv>()
   .get('/me', (c) => c.json({ user: publicUser(c.var.user), spaces: userSpaces(c.var.user.id) }))
+  // A browser-extension token can't change the account.
+  .use('/me/*', async (c, next) => {
+    requireSession(c);
+    await next();
+  })
+  .use('/me', async (c, next) => {
+    if (c.req.method !== 'GET') requireSession(c);
+    await next();
+  })
   .patch('/me/username', async (c) => {
     const { username } = parseInput(z.object({ username: usernameSchema }), await c.req.json());
     await auth.api.updateUser({

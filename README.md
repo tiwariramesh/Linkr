@@ -27,6 +27,7 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 - **Accounts.** Anyone can register on your server (or only you, with `REGISTRATION=closed`). Spaces are private to their members.
 - **Shared spaces.** Make a shared space and invite other accounts by username or email, as editors or viewers. Invitations, people joining, and links or notes someone sends you arrive under the bell, live. Viewers see everything but can't change anything. Your Personal space stays yours alone, and each folder has a **My draft** tab only you can see.
 - **Public pages.** Share a folder with a read-only link anyone can open without an account, e.g. for students after a session. Your notes about links stay private; session notes appear only if you choose. Turning the link off stops it working.
+- **Browser extension.** Linkr for Chrome and Edge saves the page you're on (with a note, and any text you've selected) to any folder, with today's sessions offered first, and tells you if it's already saved. Right-click to save a link, a page or selected text; Alt+Shift+S saves straight to your last folder. Save a tab group or a whole window as a new dated session, and open any session as a coloured tab group; saving that group again adds only its new tabs.
 - **Trash.** Deleted items and folders can be restored for 30 days.
 - **Import.** Bookmarks from Chrome, Edge, Firefox, Safari or Raindrop.io (HTML export), or a Pocket export (.zip). Browser folders become Linkr folders and original dates are kept.
 
@@ -38,7 +39,8 @@ A self-hosted home for links, notes and session material: spaces, nested folders
 4. ~~Highlights and annotations on saved articles~~ (done)
 5. ~~Across terms: "run again" templates, where a link was used before, presenter mode, full-text search~~ (done)
 6. ~~Shared spaces with roles, notifications, and read-only pages to share a session with students; Notion-style notes, folder covers and descriptions; a documented design system~~ (done)
-7. Chrome extension (save to the current session, tab groups ↔ sessions), then AI with your choice of Claude, OpenAI, OpenRouter or Ollama
+7. ~~Chrome extension: save to the current session, tab groups ↔ sessions~~ (done)
+8. AI with your choice of Claude, OpenAI, OpenRouter or Ollama
 
 ## Run it
 
@@ -77,6 +79,18 @@ Cloudflare's free plan accepts uploads of up to 100 MB, which is Linkr's default
 
 The computer running Linkr must stay on and awake for other devices to reach it.
 
+## Browser extension
+
+The extension lives in `extension/` and is built with the app (`npm run build`), into `extension/dist`. To install it in Chrome or Edge:
+
+1. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
+2. Choose **Load unpacked** and pick the `extension/dist` folder. Pin Linkr to the toolbar.
+3. Click the Linkr icon, enter your Linkr's address (e.g. `linkr.example.com`, or `localhost:8080` on the same computer) and choose **Connect**. Allow access when Chrome asks, then approve on the Linkr page that opens.
+
+Each browser gets its own key, and your password never leaves Linkr. The key can save and read your spaces but can't change your account. **Settings → Browser** lists connected browsers; **Disconnect** stops one at once. After `git pull`, run `npm run build` and click the reload arrow on the extension's card.
+
+Shortcuts: **Alt+Shift+L** opens Linkr, and **Alt+Shift+S** saves the page to your last folder. Change them at `chrome://extensions/shortcuts`. If your organisation's policy blocks Developer mode, the extension can't be installed this way.
+
 ## Update
 
 ```sh
@@ -99,13 +113,14 @@ npm run dev
 
 This starts the API server on port 8080 (restarting on changes) and the web app on http://localhost:5173.
 
-| Folder            | What's in it                                                                                                            |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `web/`            | The app: React 19, TypeScript, Vite 8, Tailwind CSS 4, shadcn/ui, Zustand, dnd-kit                                      |
-| `server/`         | Hono API on Node 24, run straight from TypeScript. SQLite via Drizzle ORM, accounts via Better Auth                     |
-| `server/drizzle/` | Database migrations, applied automatically on start. After editing `server/src/db/schema.ts`, run `npm run db:generate` |
-| `server/test/`    | API tests against a real server and a throwaway database                                                                |
-| `design/`         | The design system (tokens, components, principles) and brand assets. See it live at `/styleguide` in the running app    |
+| Folder            | What's in it                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/`            | The app: React 19, TypeScript, Vite 8, Tailwind CSS 4, shadcn/ui, Zustand, dnd-kit                                                          |
+| `server/`         | Hono API on Node 24, run straight from TypeScript. SQLite via Drizzle ORM, accounts via Better Auth                                         |
+| `server/drizzle/` | Database migrations, applied automatically on start. After editing `server/src/db/schema.ts`, run `npm run db:generate`                     |
+| `extension/`      | The Chrome/Edge extension (Manifest V3): React popup on the same design system, background worker for right-click, shortcuts and tab groups |
+| `server/test/`    | API tests against a real server and a throwaway database                                                                                    |
+| `design/`         | The design system (tokens, components, principles) and brand assets. See it live at `/styleguide` in the running app                        |
 
 Before sending a change: `npm run typecheck`, `npm run lint` and `npm test`.
 
